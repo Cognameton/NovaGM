@@ -1,0 +1,108 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:NovaGM.ViewModels"
+        xmlns:m="clr-namespace:NovaGM.Models"
+        xmlns:views="clr-namespace:NovaGM.Views"
+        x:Class="NovaGM.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="{Binding Title}"
+        Width="1000" Height="700">
+
+  <DockPanel>
+
+    <!-- Top menu -->
+    <Menu DockPanel.Dock="Top">
+      <MenuItem Header="_File">
+        <MenuItem Header="_New Game" Command="{Binding NewGameCommand}" />
+        <MenuItem Header="_Continue Game" Command="{Binding ContinueGameCommand}" />
+        <Separator/>
+        <MenuItem Header="E_xit" Command="{Binding ExitCommand}" />
+      </MenuItem>
+
+      <MenuItem Header="_Packs">
+        <MenuItem Header="_Manage Packs" Command="{Binding OpenPacksCommand}" />
+      </MenuItem>
+
+      <MenuItem Header="_View">
+        <MenuItem Header="_Models" Command="{Binding OpenModelsCommand}" />
+        <MenuItem Header="_Settings" Command="{Binding OpenSettingsCommand}" />
+      </MenuItem>
+
+      <MenuItem Header="_Help">
+        <MenuItem Header="_About" Command="{Binding AboutCommand}" />
+      </MenuItem>
+    </Menu>
+
+    <!-- Main tabs -->
+    <TabControl>
+      <!-- Session tab -->
+      <TabItem Header="Session">
+        <Grid RowDefinitions="*,Auto" Margin="10">
+          <ScrollViewer Grid.Row="0">
+            <ItemsControl ItemsSource="{Binding Messages}">
+              <ItemsControl.ItemTemplate>
+                <!-- compiled binding needs x:DataType -->
+                <DataTemplate x:DataType="vm:Message">
+                  <StackPanel Margin="0,0,0,8">
+                    <TextBlock Text="{Binding Role}" FontWeight="Bold"/>
+                    <TextBlock Text="{Binding Content}" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+
+          <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+            <TextBox Text="{Binding Input, Mode=TwoWay}" Watermark="Your action..." />
+            <Button Grid.Column="1"
+                    Content="Send"
+                    Margin="8,0,0,0"
+                    Command="{Binding SendCommand}" />
+          </Grid>
+        </Grid>
+      </TabItem>
+
+      <!-- Character tab -->
+      <TabItem Header="Character">
+        <views:CharacterSheetView DataContext="{Binding CharacterSheet}" />
+      </TabItem>
+
+      <!-- Journal tab -->
+      <TabItem Header="Journal">
+        <Grid RowDefinitions="*,Auto" Margin="10">
+          <ListBox ItemsSource="{Binding JournalEntries}">
+            <ListBox.ItemTemplate>
+              <!-- DO NOT redeclare xmlns here; root already has it -->
+              <DataTemplate x:DataType="x:String">
+                <TextBlock Text="{Binding .}"/>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+            <TextBox Text="{Binding NewJournalText, Mode=TwoWay}" Watermark="Add entry..."/>
+            <Button Grid.Column="1"
+                    Content="Add"
+                    Margin="8,0,0,0"
+                    Command="{Binding AddJournalEntryCommand}" />
+          </Grid>
+        </Grid>
+      </TabItem>
+
+      <!-- Library tab -->
+      <TabItem Header="Library">
+        <ListBox ItemsSource="{Binding Compendium}">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="m:CompendiumEntry">
+              <StackPanel Margin="0,0,0,8">
+                <TextBlock Text="{Binding Name}" FontWeight="Bold"/>
+                <TextBlock Text="{Binding Description}" TextWrapping="Wrap"/>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </TabItem>
+    </TabControl>
+
+  </DockPanel>
+</Window>

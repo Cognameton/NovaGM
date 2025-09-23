@@ -1,0 +1,21 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- No Styles.Resources here; tokens are in Application.Resources -->
+
+  <Style Selector="Window">
+    <Setter Property="Background" Value="{DynamicResource Brush.Surface}"/>
+    <Setter Property="FontFamily" Value="{DynamicResource Font.Family.UI}"/>
+  </Style>
+
+  <Style Selector="TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text}"/>
+  </Style>
+
+  <Style Selector="Button">
+    <Setter Property="Background" Value="{DynamicResource Brush.Primary}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Text}"/>
+    <Setter Property="Padding" Value="{DynamicResource Space.MD}"/>
+    <Setter Property="CornerRadius" Value="{DynamicResource Radius.SM}"/>
+  </Style>
+</Styles>

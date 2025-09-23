@@ -1,0 +1,21 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="NovaGM.Views.PacksWindow"
+        Width="520" Height="360"
+        CanResize="False"
+        Title="Packs — Manage">
+
+  <Border Padding="16">
+    <Grid RowDefinitions="Auto,*,Auto">
+      <TextBlock Text="Installed packs" FontSize="18" FontWeight="SemiBold" />
+
+      <ListBox x:Name="List" Grid.Row="1" Margin="0,10,0,10" />
+
+      <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button Content="Open packs folder" Click="OpenFolder_Click"/>
+        <Button Content="Close" IsDefault="True" Click="Close_Click"/>
+        <Button Content="Set Active" Click="SetActive_Click"/>
+      </StackPanel>
+    </Grid>
+  </Border>
+</Window>

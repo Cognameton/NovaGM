@@ -1,0 +1,236 @@
+using System;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Input;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
+using NovaGM.Models;
+using NovaGM.Services;               // AgentOrchestrator, ShutdownUtil
+using NovaGM.Services.Streaming;     // LocalBroadcaster
+using NovaGM.Services.Multiplayer;   // GameCoordinator
+using NovaGM.Views;                  // SettingsWindow, PacksWindow, ModelsWindow (if present)
+
+namespace NovaGM.ViewModels
+{
+    public sealed class MainWindowViewModel
+    {
+        public string Title => "NovaGM";
+        public string RoomCode => GameCoordinator.Instance.CurrentCode;
+
+        public ObservableCollection<Message> Messages { get; } = new();
+        public string Input { get; set; } = string.Empty;
+        public ICommand SendCommand { get; }
+
+        public CharacterSheetViewModel CharacterSheet { get; }
+        public ObservableCollection<string> JournalEntries { get; } = new();
+        public string NewJournalText { get; set; } = "";
+        public ICommand AddJournalEntryCommand { get; }
+
+        public ObservableCollection<CompendiumEntry> Compendium { get; } = new();
+
+        // Menu commands
+        public ICommand NewGameCommand { get; }
+        public ICommand ContinueGameCommand { get; }
+        public ICommand ExitCommand { get; }
+        public ICommand OpenPacksCommand { get; }
+        public ICommand OpenSettingsCommand { get; }
+        public ICommand OpenModelsCommand { get; }
+        public ICommand AboutCommand { get; }
+
+        private readonly AgentOrchestrator _agent = new();
+        private readonly SemaphoreSlim _turnLock = new(1, 1);
+
+        public MainWindowViewModel()
+        {
+            // Seed example character (placeholder to light up UI)
+            var c = new Character
+            {
+                Name = "Aria Voss",
+                Race = "Human",
+                Class = "Ranger",
+                Level = 1,
+                Stats = new Stats { STR = 12, DEX = 15, CON = 12, INT = 10, WIS = 13, CHA = 9 },
+                Equipment =
+                {
+                    [EquipmentSlot.Head]     = new Item { Name = "Leather Hood",     Slot = EquipmentSlot.Head },
+                    [EquipmentSlot.Chest]    = new Item { Name = "Leather Jerkin",   Slot = EquipmentSlot.Chest },
+                    [EquipmentSlot.MainHand] = new Item { Name = "Shortsword",       Slot = EquipmentSlot.MainHand },
+                    [EquipmentSlot.OffHand]  = new Item { Name = "Wooden Buckler",   Slot = EquipmentSlot.OffHand },
+                    [EquipmentSlot.Feet]     = new Item { Name = "Traveler's Boots", Slot = EquipmentSlot.Feet },
+                }
+            };
+            CharacterSheet = new CharacterSheetViewModel(c);
+
+            // Minimal compendium placeholders
+            Compendium.Add(new CompendiumEntry { Category = "Race",   Name = "Human",      Description = "Versatile and adaptable." });
+            Compendium.Add(new CompendiumEntry { Category = "Race",   Name = "Elf",        Description = "Graceful, keen senses." });
+            Compendium.Add(new CompendiumEntry { Category = "Class",  Name = "Fighter",    Description = "Martial expert." });
+            Compendium.Add(new CompendiumEntry { Category = "Class",  Name = "Wizard",     Description = "Arcane scholar." });
+            Compendium.Add(new CompendiumEntry { Category = "Weapon", Name = "Shortsword", Description = "Light melee weapon." });
+
+            Messages.Add(new Message("GM", "Welcome to NovaGM. Type an action to begin."));
+
+            var broadcaster  = LocalBroadcaster.Instance;
+            var coordinator  = GameCoordinator.Instance;
+
+            // Desktop "send"
+            SendCommand = new RelayCommand(async _ =>
+            {
+                var text = Input.Trim();
+                if (string.IsNullOrWhiteSpace(text)) return;
+                Input = string.Empty;
+                await HandleTurnAsync("Player", text, broadcaster);
+            });
+
+            // Journal add
+            AddJournalEntryCommand = new RelayCommand(_ =>
+            {
+                var t = NewJournalText?.Trim();
+                if (!string.IsNullOrWhiteSpace(t))
+                {
+                    JournalEntries.Add(t);
+                    NewJournalText = "";
+                }
+                return Task.CompletedTask;
+            });
+
+            // Menu commands
+            NewGameCommand = new RelayCommand(_ =>
+            {
+                Messages.Clear();
+                Messages.Add(new Message("GM", "New game started. Set the scene or type an action to begin."));
+                return Task.CompletedTask;
+            });
+
+            ContinueGameCommand = new RelayCommand(_ =>
+            {
+                Messages.Add(new Message("GM", "Continuing last session…"));
+                return Task.CompletedTask;
+            });
+
+            ExitCommand = new RelayCommand(_ =>
+            {
+                // Close main window → triggers App cleanup (LocalServer.Dispose + ShutdownUtil.HardExit)
+                if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life
+                    && life.MainWindow is { } mw)
+                {
+                    mw.Close();
+                }
+                return Task.CompletedTask;
+            });
+
+            OpenPacksCommand = new RelayCommand(_ =>
+            {
+                ShowToolWindow(() => new PacksWindow());
+                return Task.CompletedTask;
+            });
+
+            OpenSettingsCommand = new RelayCommand(_ =>
+            {
+                ShowToolWindow(() => new SettingsWindow());
+                return Task.CompletedTask;
+            });
+
+            OpenModelsCommand = new RelayCommand(_ =>
+            {
+                ShowToolWindow(() => new ModelsWindow());
+                return Task.CompletedTask;
+            });
+
+            AboutCommand = new RelayCommand(_ =>
+            {
+                Messages.Add(new Message("GM", "NovaGM — local-first GM assistant. Foreigner on the jukebox, Star Trek in our hearts."));
+                return Task.CompletedTask;
+            });
+
+            // Consume LAN player inputs
+            _ = Task.Run(async () =>
+            {
+                await foreach (var inp in coordinator.ReadInputsAsync(CancellationToken.None))
+                    await HandleTurnAsync(inp.Name, inp.Text, broadcaster);
+            });
+        }
+
+        private static void ShowToolWindow(Func<Window> factory)
+        {
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life
+                && life.MainWindow is { } owner)
+            {
+                var w = factory();
+                w.Show(owner);
+            }
+            else
+            {
+                factory().Show();
+            }
+        }
+
+        private async Task HandleTurnAsync(string playerName, string text, LocalBroadcaster broadcaster)
+        {
+            await _turnLock.WaitAsync();
+            try
+            {
+                Dispatcher.UIThread.Post(() => Messages.Add(new Message(playerName, text)));
+
+                var gm = new Message("GM", "");
+                Dispatcher.UIThread.Post(() => Messages.Add(gm));
+
+                string final = await _agent.RunTurnAsync(
+                    text,
+                    default,
+                    onNarratorToken: chunk =>
+                    {
+                        Dispatcher.UIThread.Post(() => gm.Append(chunk));
+                        broadcaster.Publish(chunk);
+                    }
+                );
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (!string.IsNullOrEmpty(final) && !gm.Content.Equals(final))
+                        gm.Content = final;
+                    broadcaster.Publish("\n");
+                });
+            }
+            finally { _turnLock.Release(); }
+        }
+    }
+
+    public sealed class Message : INotifyPropertyChanged
+    {
+        private string _content;
+        public string Role { get; }
+        public string Content
+        {
+            get => _content;
+            set { if (_content != value) { _content = value; OnPropertyChanged(); } }
+        }
+        public Message(string role, string content) { Role = role; _content = content; }
+        public void Append(string chunk)
+        {
+            if (string.IsNullOrEmpty(chunk)) return;
+            chunk = chunk.Replace("<EOT>", "");
+            _content += chunk;
+            OnPropertyChanged(nameof(Content));
+        }
+        public event PropertyChangedEventHandler? PropertyChanged;
+        private void OnPropertyChanged([CallerMemberName] string? name = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
+
+    public sealed class RelayCommand : ICommand
+    {
+        private readonly Func<object?, Task>? _async;
+        private readonly Predicate<object?>? _can;
+        public RelayCommand(Func<object?, Task> async, Predicate<object?>? can = null)
+        { _async = async; _can = can; }
+        public bool CanExecute(object? parameter) => _can?.Invoke(parameter) ?? true;
+        public async void Execute(object? parameter) { if (_async is not null) await _async(parameter); }
+        public event EventHandler? CanExecuteChanged { add { } remove { } }
+    }
+}

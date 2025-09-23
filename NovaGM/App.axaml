@@ -1,0 +1,17 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="NovaGM.App">
+
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://NovaGM/Themes/Tokens.Base.axaml"/>
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+
+  <Application.Styles>
+    <StyleInclude Source="avares://Avalonia.Themes.Fluent/FluentTheme.xaml"/>
+    <StyleInclude Source="avares://NovaGM/Themes/NovaClean.axaml"/>
+  </Application.Styles>
+</Application>

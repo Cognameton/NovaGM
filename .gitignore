@@ -1,0 +1,27 @@
+# Builds / artifacts
+destribute/
+dist/
+build/
+bin/
+obj/
+
+# Local models (keep local; never push)
+NovaGM/NovaGM/llm/
+NovaGM/NovaGM/bin/Debug/net8.0/llm/
+
+# Large binaries (common culprits)
+*.gguf
+*.safetensors
+*.onnx
+*.zip
+*.7z
+*.tar*
+*.mp4
+*.wav
+*.iso
+
+# Misc
+.vs/
+.venv/
+__pycache__/
+*.log

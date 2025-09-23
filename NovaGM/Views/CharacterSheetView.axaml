@@ -1,0 +1,134 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:NovaGM.ViewModels"
+             xmlns:models="clr-namespace:NovaGM.Models"
+             x:Class="NovaGM.Views.CharacterSheetView"
+             x:DataType="vm:CharacterSheetViewModel">
+
+  <Grid ColumnDefinitions="2*,1.2*" RowDefinitions="Auto,*" Margin="4">
+    <TextBlock Grid.ColumnSpan="2"
+               Text="{Binding Header}"
+               FontSize="18"
+               FontWeight="Bold"
+               Margin="0,0,0,8"/>
+
+    <!-- Left: Silhouette + equipment slots -->
+    <Border Grid.Row="1" Grid.Column="0"
+            CornerRadius="{DynamicResource Radius.MD}"
+            Background="{DynamicResource Brush.SurfaceAlt}"
+            Padding="10">
+      <Grid ColumnDefinitions="*,*,*"
+            RowDefinitions="Auto,*,Auto,Auto,Auto,*,Auto">
+
+        <!-- Top row: Head/Neck/Cloak -->
+        <StackPanel Grid.Row="0" Grid.Column="1"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    Spacing="8">
+          <Button Content="{Binding Head}" MinWidth="96"/>
+          <Button Content="{Binding Neck}" MinWidth="96"/>
+          <Button Content="{Binding Cloak}" MinWidth="96"/>
+        </StackPanel>
+
+        <!-- Silhouette box -->
+        <Border Grid.Row="1" Grid.Column="1"
+                MinHeight="260"
+                CornerRadius="12"
+                Background="#151922"
+                BorderBrush="#2B3448"
+                BorderThickness="1"
+                VerticalAlignment="Stretch"
+                HorizontalAlignment="Stretch">
+          <TextBlock Text="Humanoid"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center"
+                     Foreground="{DynamicResource Brush.Muted}" />
+        </Border>
+
+        <!-- Mid rows: chest/hands/belt/legs/feet -->
+        <StackPanel Grid.Row="2" Grid.Column="0"
+                    Orientation="Vertical"
+                    Spacing="6"
+                    HorizontalAlignment="Left">
+          <Button Content="{Binding Chest}" MinWidth="120"/>
+          <Button Content="{Binding Hands}" MinWidth="120"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Grid.Column="2"
+                    Orientation="Vertical"
+                    Spacing="6"
+                    HorizontalAlignment="Right">
+          <Button Content="{Binding Belt}" MinWidth="120"/>
+          <Button Content="{Binding Legs}" MinWidth="120"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="3" Grid.Column="1"
+                    Orientation="Horizontal"
+                    Spacing="10"
+                    HorizontalAlignment="Center">
+          <Button Content="{Binding Feet}" MinWidth="120"/>
+        </StackPanel>
+
+        <!-- Weapons & rings -->
+        <StackPanel Grid.Row="5" Grid.Column="0"
+                    Orientation="Vertical"
+                    Spacing="6"
+                    HorizontalAlignment="Left">
+          <Button Content="{Binding MainHand}" MinWidth="120"/>
+          <Button Content="{Binding Ring1}" MinWidth="120"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="5" Grid.Column="2"
+                    Orientation="Vertical"
+                    Spacing="6"
+                    HorizontalAlignment="Right">
+          <Button Content="{Binding OffHand}" MinWidth="120"/>
+          <Button Content="{Binding Ring2}" MinWidth="120"/>
+        </StackPanel>
+
+      </Grid>
+    </Border>
+
+    <!-- Right: Stats & equipped list -->
+    <Border Grid.Row="1" Grid.Column="1"
+            CornerRadius="{DynamicResource Radius.MD}"
+            Background="{DynamicResource Brush.SurfaceAlt}"
+            Padding="12"
+            Margin="8,0,0,0">
+      <StackPanel Spacing="10">
+        <TextBlock Text="Attributes" FontWeight="Bold"/>
+
+        <!-- Simple two-column grid for stats -->
+        <UniformGrid Columns="2" Rows="6">
+          <TextBlock Text="STR"/>
+          <TextBlock Text="{Binding STR}"/>
+          <TextBlock Text="DEX"/>
+          <TextBlock Text="{Binding DEX}"/>
+          <TextBlock Text="CON"/>
+          <TextBlock Text="{Binding CON}"/>
+          <TextBlock Text="INT"/>
+          <TextBlock Text="{Binding INT}"/>
+          <TextBlock Text="WIS"/>
+          <TextBlock Text="{Binding WIS}"/>
+          <TextBlock Text="CHA"/>
+          <TextBlock Text="{Binding CHA}"/>
+        </UniformGrid>
+
+        <Separator/>
+
+        <TextBlock Text="Equipped" FontWeight="Bold"/>
+        <ItemsControl ItemsSource="{Binding EquippedList}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="models:Item">
+              <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+                <TextBlock Text="{Binding Slot}"/>
+                <TextBlock Text="—"/>
+                <TextBlock Text="{Binding Name}"/>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

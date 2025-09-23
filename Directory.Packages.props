@@ -1,0 +1,25 @@
+<Project>
+  <PropertyGroup>
+    <!-- Turn on Central Package Management -->
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- Optional: keep transitive versions stable -->
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Avalonia 11 -->
+    <PackageVersion Include="Avalonia" Version="11.3.6" />
+    <PackageVersion Include="Avalonia.Desktop" Version="11.3.6" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="11.3.6" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="11.3.6" />
+    <PackageVersion Include="Avalonia.Diagnostics" Version="11.3.6" />
+
+    <!-- Local LLM -->
+    <PackageVersion Include="LLamaSharp" Version="0.25.0" />
+    <PackageVersion Include="LLamaSharp.Backend.Cpu" Version="0.25.0" />
+
+    <!-- Storage + QR -->
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="8.0.8" />
+    <PackageVersion Include="QRCoder" Version="1.4.3" />
+  </ItemGroup>
+</Project>

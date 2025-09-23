@@ -1,0 +1,26 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- Core palette -->
+  <Color x:Key="Color.Primary">#5A66FF</Color>
+  <Color x:Key="Color.Secondary">#4A90E2</Color>
+  <Color x:Key="Color.Surface">#121417</Color>
+  <Color x:Key="Color.SurfaceAlt">#1A1D22</Color>
+  <Color x:Key="Color.Text">#EAECEE</Color>
+  <Color x:Key="Color.Muted">#A9B2BD</Color>
+
+  <SolidColorBrush x:Key="Brush.Primary" Color="{DynamicResource Color.Primary}"/>
+  <SolidColorBrush x:Key="Brush.Surface" Color="{DynamicResource Color.Surface}"/>
+  <SolidColorBrush x:Key="Brush.Text" Color="{DynamicResource Color.Text}"/>
+
+  <!-- Typography -->
+  <x:Double x:Key="Font.Size.Body">14</x:Double>
+  <x:Double x:Key="Font.Size.Title">18</x:Double>
+  <FontFamily x:Key="Font.Family.UI">Inter, Segoe UI, Ubuntu</FontFamily>
+
+  <!-- Shape + spacing -->
+  <CornerRadius x:Key="Radius.SM">6</CornerRadius>
+  <CornerRadius x:Key="Radius.MD">10</CornerRadius>
+  <Thickness x:Key="Space.SM">6</Thickness>
+  <Thickness x:Key="Space.MD">12</Thickness>
+</ResourceDictionary>

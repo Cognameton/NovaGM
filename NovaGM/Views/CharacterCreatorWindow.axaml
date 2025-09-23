@@ -1,0 +1,23 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="NovaGM.Views.CharacterCreatorWindow"
+        Width="640" Height="520"
+        CanResize="True"
+        Title="Character Creator — NovaGM">
+
+  <Border Padding="16">
+    <Grid RowDefinitions="Auto,*,Auto">
+      <TextBlock Text="Create a new character" FontSize="18" FontWeight="SemiBold"/>
+
+      <ScrollViewer Grid.Row="1" Margin="0,12,0,12">
+        <!-- Will be filled from code-behind -->
+        <StackPanel x:Name="Host" Spacing="10"/>
+      </ScrollViewer>
+
+      <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button Content="Cancel" Click="Cancel_Click"/>
+        <Button Content="Create" IsDefault="True" Click="Create_Click"/>
+      </StackPanel>
+    </Grid>
+  </Border>
+</Window>
