@@ -151,6 +151,9 @@ body{{font-family:sans-serif;margin:12px;}}
 .row>label{{display:flex;flex-direction:column;min-width:120px;}}
 input[type=number]{{width:70px}}
 button{{padding:6px 10px}}
+.auto-gen{{background:#f0f8ff;border:1px solid #4a90e2;border-radius:6px;padding:8px;margin-bottom:8px;}}
+.auto-gen-buttons{{display:flex;gap:6px;flex-wrap:wrap;}}
+.auto-gen button{{background:#4a90e2;color:white;border:none;border-radius:4px;padding:4px 8px;font-size:12px;}}
 </style></head>
 <body>
   <div class='nav'>
@@ -161,6 +164,17 @@ button{{padding:6px 10px}}
 
   <div id='char' class='card'>
     <h3>Character</h3>
+    
+    <div class='auto-gen'>
+      <div style='font-weight:bold;margin-bottom:4px;'>Quick Generation:</div>
+      <div class='auto-gen-buttons'>
+        <button onclick='generateCharacter(""random"")'>Random</button>
+        <button onclick='generateCharacter(""fighter"")'>Fighter</button>
+        <button onclick='generateCharacter(""rogue"")'>Rogue</button>
+        <button onclick='generateCharacter(""mage"")'>Mage</button>
+      </div>
+    </div>
+    
     <div class='row'>
       <label>Name<input id='pc_name'/></label>
       <label>Race<input id='pc_race'/></label>
@@ -185,6 +199,35 @@ button{{padding:6px 10px}}
 
 <script>
 const nameV = '{nameJs}', codeV = '{codeJs}';
+
+// Auto-generation function
+async function generateCharacter(type) {{
+  try {{
+    const response = await fetch('/generate-character', {{
+      method: 'POST',
+      headers: {{ 'Content-Type': 'application/json' }},
+      body: JSON.stringify({{ type: type }})
+    }});
+    
+    if (response.ok) {{
+      const character = await response.json();
+      
+      // Fill form with generated character
+      document.getElementById('pc_name').value = character.name || '';
+      document.getElementById('pc_race').value = character.race || '';
+      document.getElementById('pc_class').value = character.class || '';
+      document.getElementById('pc_str').value = character.stats?.str || 10;
+      document.getElementById('pc_dex').value = character.stats?.dex || 10;
+      document.getElementById('pc_con').value = character.stats?.con || 10;
+      document.getElementById('pc_int').value = character.stats?.int || 10;
+      document.getElementById('pc_wis').value = character.stats?.wis || 10;
+      document.getElementById('pc_cha').value = character.stats?.cha || 10;
+    }}
+  }} catch (e) {{
+    console.error('Failed to generate character:', e);
+    alert('Failed to generate character. Please try again.');
+  }}
+}}
 
 // load existing pc
 (async () => {{
