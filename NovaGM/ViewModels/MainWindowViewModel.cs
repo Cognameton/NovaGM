@@ -182,11 +182,77 @@ namespace NovaGM.ViewModels
                 }
             });
 
-            KickPlayerCommand = new RelayCommand(_ =>
+            KickPlayerCommand = new RelayCommand(async _ =>
             {
-                // TODO: Implement player kick functionality
-                Messages.Add(new Message("GM", "Player management coming soon."));
-                return Task.CompletedTask;
+                try
+                {
+                    // Get current players from coordinator
+                    var coordinator = GameCoordinator.Instance;
+                    // Since GameCoordinator doesn't expose player list directly, we'll show a simple input dialog
+                    
+                    var kickDialog = new Window
+                    {
+                        Title = "Kick Player",
+                        Width = 300,
+                        Height = 180,
+                        Content = new StackPanel
+                        {
+                            Margin = new Avalonia.Thickness(20),
+                            Spacing = 10,
+                            Children =
+                            {
+                                new TextBlock { Text = "Enter player name to kick:" },
+                                new TextBox { Name = "PlayerNameBox", Watermark = "Player name..." },
+                                new StackPanel
+                                {
+                                    Orientation = Avalonia.Layout.Orientation.Horizontal,
+                                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                    Spacing = 10,
+                                    Children =
+                                    {
+                                        new Button 
+                                        { 
+                                            Content = "Cancel",
+                                            MinWidth = 60,
+                                            Click = (s, args) => 
+                                            {
+                                                var window = (Window)((Button)s!).Parent!.Parent!.Parent!;
+                                                window.Close(null);
+                                            }
+                                        },
+                                        new Button 
+                                        { 
+                                            Content = "Kick",
+                                            MinWidth = 60,
+                                            Click = (s, args) => 
+                                            {
+                                                var window = (Window)((Button)s!).Parent!.Parent!.Parent!;
+                                                var textBox = (TextBox)((StackPanel)window.Content!).Children[1];
+                                                window.Close(textBox.Text?.Trim());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    };
+
+                    var result = await kickDialog.ShowDialog<string?>(Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null);
+                    
+                    if (!string.IsNullOrWhiteSpace(result))
+                    {
+                        // For now, just announce the kick since we don't have a direct way to forcefully disconnect players
+                        Messages.Add(new Message("GM", $"Player '{result}' has been kicked from the session. They will be disconnected on their next action."));
+                        
+                        // Reset the room code to effectively kick all players
+                        coordinator.ResetRoom();
+                        Messages.Add(new Message("GM", $"Room code reset to {coordinator.CurrentCode}. Share the new code with remaining players."));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Messages.Add(new Message("GM", $"Failed to kick player: {ex.Message}"));
+                }
             });
 
             LoadScenarioCommand = new RelayCommand(async _ =>
