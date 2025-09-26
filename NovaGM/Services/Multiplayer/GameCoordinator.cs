@@ -31,6 +31,9 @@ namespace NovaGM.Services.Multiplayer
     /// Coordinates join code, inputs from LAN, and player character data.
     public sealed class GameCoordinator
     {
+        private static readonly Lazy<GameCoordinator> _instance = new(() => new GameCoordinator());
+        public static GameCoordinator Instance => _instance.Value;
+
         private readonly ConcurrentQueue<PlayerInput> _queue = new();
         private readonly SemaphoreSlim _signal = new(0, int.MaxValue);
         private readonly CancellationTokenSource _cts = new();
@@ -38,7 +41,7 @@ namespace NovaGM.Services.Multiplayer
 
         public string CurrentCode { get; private set; }
 
-        public GameCoordinator()
+        private GameCoordinator()
         {
             CurrentCode = GenerateCode();
         }
