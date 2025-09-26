@@ -213,41 +213,47 @@ namespace NovaGM.Views
                 Title = "Confirm Delete",
                 Width = 300,
                 Height = 150,
-                Content = new StackPanel
-                {
-                    Margin = new Avalonia.Thickness(20),
-                    Spacing = 15,
-                    Children =
-                    {
-                        new TextBlock 
-                        { 
-                            Text = $"Are you sure you want to delete '{_selectedMission.Name}'?",
-                            TextWrapping = Avalonia.Media.TextWrapping.Wrap
-                        },
-                        new StackPanel
-                        {
-                            Orientation = Avalonia.Layout.Orientation.Horizontal,
-                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                            Spacing = 10,
-                            Children =
-                            {
-                                new Button 
-                                { 
-                                    Content = "Cancel",
-                                    MinWidth = 60,
-                                    Click = (s, args) => ((Window)((Button)s!).Parent!.Parent!.Parent!).Close(false)
-                                },
-                                new Button 
-                                { 
-                                    Content = "Delete",
-                                    MinWidth = 60,
-                                    Click = (s, args) => ((Window)((Button)s!).Parent!.Parent!.Parent!).Close(true)
-                                }
-                            }
-                        }
-                    }
-                }
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
             };
+
+            var stackPanel = new StackPanel
+            {
+                Margin = new Avalonia.Thickness(20),
+                Spacing = 15
+            };
+
+            stackPanel.Children.Add(new TextBlock 
+            { 
+                Text = $"Are you sure you want to delete '{_selectedMission.Name}'?",
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap
+            });
+
+            var buttonPanel = new StackPanel
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                Spacing = 10
+            };
+
+            var cancelButton = new Button 
+            { 
+                Content = "Cancel",
+                MinWidth = 60
+            };
+            cancelButton.Click += (s, args) => confirmDialog.Close(false);
+
+            var deleteButton = new Button 
+            { 
+                Content = "Delete",
+                MinWidth = 60
+            };
+            deleteButton.Click += (s, args) => confirmDialog.Close(true);
+
+            buttonPanel.Children.Add(cancelButton);
+            buttonPanel.Children.Add(deleteButton);
+            stackPanel.Children.Add(buttonPanel);
+
+            confirmDialog.Content = stackPanel;
 
             confirmDialog.ShowDialog<bool>(this).ContinueWith(task =>
             {
