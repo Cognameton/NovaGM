@@ -189,11 +189,22 @@ namespace NovaGM.ViewModels
                 return Task.CompletedTask;
             });
 
-            LoadScenarioCommand = new RelayCommand(_ =>
+            LoadScenarioCommand = new RelayCommand(async _ =>
             {
-                // TODO: Implement scenario loading from packs
-                Messages.Add(new Message("GM", "Scenario loading coming soon."));
-                return Task.CompletedTask;
+                try
+                {
+                    var loadWindow = new LoadScenarioWindow();
+                    var result = await loadWindow.ShowDialog<Mission?>(Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null);
+                    
+                    if (result != null)
+                    {
+                        await LoadMissionAsync(result);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Messages.Add(new Message("GM", $"Failed to load scenario: {ex.Message}"));
+                }
             });
 
             // Consume LAN player inputs
