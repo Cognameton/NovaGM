@@ -10,6 +10,7 @@ using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Primitives;
 using Avalonia.Threading;
 using NovaGM.Models;
 using NovaGM.Services;               // AgentOrchestrator, ShutdownUtil
