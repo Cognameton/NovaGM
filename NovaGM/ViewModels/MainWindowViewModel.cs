@@ -336,7 +336,7 @@ namespace NovaGM.ViewModels
             return summary.Length > 200 ? summary.Substring(0, 200) + "..." : summary;
         }
 
-        private async Task LoadMissionAsync(Mission mission)
+        private Task LoadMissionAsync(Mission mission)
         {
             try
             {
