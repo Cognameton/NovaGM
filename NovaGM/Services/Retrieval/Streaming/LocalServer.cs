@@ -392,6 +392,50 @@ document.getElementById('send').onclick = async () => {{
                                    }
                                });
 
+                               // POST /generate-character { type }
+                               endpoints.MapPost("/generate-character", async ctx =>
+                               {
+                                   using var sr = new StreamReader(ctx.Request.Body);
+                                   var body = await sr.ReadToEndAsync();
+                                   try
+                                   {
+                                       using var doc = JsonDocument.Parse(body);
+                                       var type = doc.RootElement.GetProperty("type").GetString() ?? "random";
+
+                                       GeneratedCharacter character = type.ToLowerInvariant() switch
+                                       {
+                                           "fighter" => CharacterGenerator.GenerateForClass("fighter"),
+                                           "rogue" => CharacterGenerator.GenerateForClass("rogue"),
+                                           "mage" => CharacterGenerator.GenerateForClass("mage"),
+                                           _ => CharacterGenerator.GenerateRandom()
+                                       };
+
+                                       var response = new
+                                       {
+                                           name = character.Name,
+                                           race = character.Race,
+                                           @class = character.Class,
+                                           stats = new
+                                           {
+                                               str = character.GetBaseStat("str"),
+                                               dex = character.GetBaseStat("dex"),
+                                               con = character.GetBaseStat("con"),
+                                               @int = character.GetBaseStat("int"),
+                                               wis = character.GetBaseStat("wis"),
+                                               cha = character.GetBaseStat("cha")
+                                           }
+                                       };
+
+                                       ctx.Response.ContentType = "application/json";
+                                       await ctx.Response.WriteAsync(JsonSerializer.Serialize(response));
+                                   }
+                                   catch
+                                   {
+                                       ctx.Response.StatusCode = 400;
+                                       await ctx.Response.WriteAsync("bad request");
+                                   }
+                               });
+
                                // POST /dice  { expression }
                                endpoints.MapPost("/dice", async ctx =>
                                {
