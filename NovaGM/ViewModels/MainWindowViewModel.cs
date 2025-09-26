@@ -269,6 +269,63 @@ namespace NovaGM.ViewModels
             
             return summary.Length > 200 ? summary.Substring(0, 200) + "..." : summary;
         }
+
+        private async Task LoadMissionAsync(Mission mission)
+        {
+            try
+            {
+                // Clear current session
+                Messages.Clear();
+                
+                // Load mission state into the game
+                if (mission.InitialState != null)
+                {
+                    var state = _agent.StateStore.Load();
+                    
+                    // Apply mission initial state
+                    state.Location = mission.InitialState.Location;
+                    state.Premise = mission.InitialState.Premise;
+                    
+                    // Clear and reload collections
+                    state.Flags.Clear();
+                    foreach (var flag in mission.InitialState.Flags)
+                        state.Flags.Add(flag);
+                    
+                    state.Npcs.Clear();
+                    foreach (var npc in mission.InitialState.Npcs)
+                        state.Npcs[npc.Key] = npc.Value;
+                    
+                    state.Facts.Clear();
+                    foreach (var fact in mission.InitialState.Facts)
+                        state.Facts.Add(fact);
+                }
+                
+                // Add opening message
+                Messages.Add(new Message("GM", $"Loading mission: {mission.Name}"));
+                
+                if (!string.IsNullOrWhiteSpace(mission.Narrative?.OpeningText))
+                {
+                    Messages.Add(new Message("GM", mission.Narrative.OpeningText));
+                }
+                else if (!string.IsNullOrWhiteSpace(mission.Description))
+                {
+                    Messages.Add(new Message("GM", mission.Description));
+                }
+                
+                // Add objectives if available
+                if (mission.Narrative?.Objectives?.Any() == true)
+                {
+                    var objectiveText = "Mission Objectives:\n" + string.Join("\n", mission.Narrative.Objectives.Select(o => $"• {o}"));
+                    Messages.Add(new Message("GM", objectiveText));
+                }
+                
+                Messages.Add(new Message("GM", "Mission loaded successfully. What would you like to do?"));
+            }
+            catch (Exception ex)
+            {
+                Messages.Add(new Message("GM", $"Error loading mission: {ex.Message}"));
+            }
+        }
     }
 
     public sealed class Message : INotifyPropertyChanged
