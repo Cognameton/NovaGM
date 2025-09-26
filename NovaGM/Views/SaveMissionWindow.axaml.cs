@@ -292,7 +292,7 @@ namespace NovaGM.Views
             return $"Mission {DateTime.Now:yyyy-MM-dd}";
         }
 
-        public event PropertyChangedEventHandler? PropertyChanged;
+        public new event PropertyChangedEventHandler? PropertyChanged;
         
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
