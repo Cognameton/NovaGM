@@ -6,15 +6,36 @@
         Title="Character Creator — NovaGM">
 
   <Border Padding="16">
-    <Grid RowDefinitions="Auto,*,Auto">
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
       <TextBlock Text="Create a new character" FontSize="18" FontWeight="SemiBold"/>
 
-      <ScrollViewer Grid.Row="1" Margin="0,12,0,12">
+      <!-- Auto-generation options -->
+      <Border Grid.Row="1" 
+              Background="{DynamicResource Brush.SurfaceAlt}" 
+              CornerRadius="6" 
+              Padding="12" 
+              Margin="0,12,0,12">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Quick Generation" FontWeight="SemiBold" FontSize="14"/>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Content="Random Character" Click="GenerateRandom_Click" MinWidth="120"/>
+            <Button Content="Fighter Build" Click="GenerateFighter_Click" MinWidth="120"/>
+            <Button Content="Rogue Build" Click="GenerateRogue_Click" MinWidth="120"/>
+            <Button Content="Mage Build" Click="GenerateMage_Click" MinWidth="120"/>
+          </StackPanel>
+          <TextBlock Text="Or customize manually below..." 
+                     FontSize="12" 
+                     Opacity="0.7" 
+                     Margin="0,4,0,0"/>
+        </StackPanel>
+      </Border>
+
+      <ScrollViewer Grid.Row="2" Margin="0,0,0,12">
         <!-- Will be filled from code-behind -->
         <StackPanel x:Name="Host" Spacing="10"/>
       </ScrollViewer>
 
-      <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
         <Button Content="Cancel" Click="Cancel_Click"/>
         <Button Content="Create" IsDefault="True" Click="Create_Click"/>
       </StackPanel>
