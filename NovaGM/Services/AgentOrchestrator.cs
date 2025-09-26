@@ -21,6 +21,8 @@ namespace NovaGM.Services
         private readonly LlamaLocal _memory    = new();
         private readonly IStateStore _state    = new StateStore();
 
+        public IStateStore StateStore => _state; // Expose for mission saving
+
         private Retriever? _retriever;
         private bool _loadAttempted;
 
