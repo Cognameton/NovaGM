@@ -311,22 +311,30 @@ namespace NovaGM.Views
                 Title = "Error",
                 Width = 300,
                 Height = 150,
-                Content = new StackPanel
-                {
-                    Margin = new Avalonia.Thickness(20),
-                    Spacing = 10,
-                    Children =
-                    {
-                        new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
-                        new Button
-                        {
-                            Content = "OK",
-                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                            Click = (s, args) => ((Window)((Button)s!).Parent!.Parent!).Close()
-                        }
-                    }
-                }
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
             };
+            
+            var stackPanel = new StackPanel
+            {
+                Margin = new Avalonia.Thickness(20),
+                Spacing = 10
+            };
+            
+            stackPanel.Children.Add(new TextBlock 
+            { 
+                Text = message, 
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap 
+            });
+            
+            var okButton = new Button
+            {
+                Content = "OK",
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+            };
+            okButton.Click += (s, args) => errorBox.Close();
+            stackPanel.Children.Add(okButton);
+            
+            errorBox.Content = stackPanel;
             errorBox.ShowDialog(this);
         }
     }
