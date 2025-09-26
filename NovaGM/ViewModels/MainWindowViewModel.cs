@@ -160,11 +160,24 @@ namespace NovaGM.ViewModels
                 return Task.CompletedTask;
             });
 
-            SaveAsMissionCommand = new RelayCommand(_ =>
+            SaveAsMissionCommand = new RelayCommand(async _ =>
             {
-                // TODO: Implement mission save to pack system
-                Messages.Add(new Message("GM", "Mission save feature coming soon."));
-                return Task.CompletedTask;
+                // Open Save Mission dialog
+                try
+                {
+                    var saveWindow = new SaveMissionWindow(_agent.StateStore, Messages);
+                    var result = await saveWindow.ShowDialog<string?>(Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null);
+                    
+                    if (!string.IsNullOrEmpty(result))
+                    {
+                        var fileName = Path.GetFileNameWithoutExtension(result);
+                        Messages.Add(new Message("GM", $"Mission saved successfully as '{fileName}'. You can now load this scenario in future sessions."));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Messages.Add(new Message("GM", $"Failed to save mission: {ex.Message}"));
+                }
             });
 
             KickPlayerCommand = new RelayCommand(_ =>
