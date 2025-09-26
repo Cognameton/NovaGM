@@ -23,6 +23,83 @@ namespace NovaGM.Views
             BuildQuestions();
         }
 
+        private void GenerateRandom_Click(object? sender, RoutedEventArgs e)
+        {
+            var character = CharacterGenerator.GenerateRandom();
+            ApplyGeneratedCharacter(character);
+        }
+
+        private void GenerateFighter_Click(object? sender, RoutedEventArgs e)
+        {
+            var character = CharacterGenerator.GenerateForClass("fighter");
+            ApplyGeneratedCharacter(character);
+        }
+
+        private void GenerateRogue_Click(object? sender, RoutedEventArgs e)
+        {
+            var character = CharacterGenerator.GenerateForClass("rogue");
+            ApplyGeneratedCharacter(character);
+        }
+
+        private void GenerateMage_Click(object? sender, RoutedEventArgs e)
+        {
+            var character = CharacterGenerator.GenerateForClass("mage");
+            ApplyGeneratedCharacter(character);
+        }
+
+        private void ApplyGeneratedCharacter(GeneratedCharacter character)
+        {
+            // Set name
+            if (_bindings.TryGetValue("name", out var nameControl) && nameControl is TextBox nameBox)
+            {
+                nameBox.Text = character.Name;
+            }
+
+            // Set race
+            if (_bindings.TryGetValue("race", out var raceControl) && raceControl is ComboBox raceCombo)
+            {
+                for (int i = 0; i < raceCombo.ItemCount; i++)
+                {
+                    if (raceCombo.Items?[i]?.ToString()?.Equals(character.Race, StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        raceCombo.SelectedIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            // Set class
+            if (_bindings.TryGetValue("class", out var classControl) && classControl is ComboBox classCombo)
+            {
+                for (int i = 0; i < classCombo.ItemCount; i++)
+                {
+                    if (classCombo.Items?[i]?.ToString()?.Equals(character.Class, StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        classCombo.SelectedIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            // Set stats
+            foreach (var stat in new[] { "str", "dex", "con", "int", "wis", "cha" })
+            {
+                if (_bindings.TryGetValue(stat, out var control))
+                {
+                    var value = character.GetBaseStat(stat); // Use base stats before racial mods
+                    
+                    if (control is Slider slider)
+                    {
+                        slider.Value = value;
+                    }
+                    else if (control is Grid grid && grid.Children.Count > 0 && grid.Children[0] is Slider gridSlider)
+                    {
+                        gridSlider.Value = value;
+                    }
+                }
+            }
+        }
+
         private void BuildQuestions()
         {
             var q = PackLoader.Data.Questionnaire;
