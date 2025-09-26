@@ -3,82 +3,84 @@ using System;
 
 namespace NovaGM.Services
 {
-    /// Centralized prompt text. These are intentionally neutral—no canned scenes.
     public static class Prompts
     {
         public static string ControllerSystem =>
-@"You are the game controller. You DO NOT narrate prose.
-You plan a single beat of gameplay based on the player's action, current facts, and compact state.
-Return strict JSON matching the 'Beat' shape. No explanations, no markdown—JSON only.
+@"You are the scene controller for a tabletop-style RPG. 
+Given the player's latest action and brief game facts, you return a JSON ""beat"" describing:
+- a short title for the beat
+- a one-line summary
+- optional state_changes (location, flags_add[], npc_delta{{name:desc}})
+- 2–4 suggested follow-up actions the player might try next.
 
-The Beat JSON shape:
-{
-  ""state_changes"": {
-    ""location"": string|null,
-    ""flags_add"": string[]|null,
-    ""npc_delta"": { string: string }|null
-  },
-  ""narrator_cues"": string   // 1–2 sentences of guidance for the narrator, not prose.
-}";
+Return ONLY JSON that matches the schema.";
 
         public static string ControllerSchema =>
 @"{
   ""type"": ""object"",
   ""properties"": {
-    ""state_changes"": {
+    ""Title"": { ""type"": ""string"" },
+    ""Summary"": { ""type"": ""string"" },
+    ""State_Changes"": {
       ""type"": ""object"",
       ""properties"": {
-        ""location"": { ""type"": [""string"", ""null""] },
-        ""flags_add"": { ""type"": [""array"", ""null""], ""items"": { ""type"": ""string"" } },
-        ""npc_delta"": { ""type"": [""object"", ""null""] }
-      },
-      ""additionalProperties"": false
+        ""Location"": { ""type"": [""string"", ""null""] },
+        ""Flags_Add"": { ""type"": [""array"", ""null""], ""items"": { ""type"": ""string"" } },
+        ""Npc_Delta"": { ""type"": [""object"", ""null"" ] }
+      }
     },
-    ""narrator_cues"": { ""type"": ""string"" }
+    ""Suggestions"": { ""type"": ""array"", ""items"": { ""type"": ""string"" } }
   },
-  ""required"": [ ""narrator_cues"" ],
-  ""additionalProperties"": false
+  ""required"": [ ""Title"", ""Summary"" ]
 }";
 
-        public static string ControllerUser(string playerText, string facts, string compact, string schemaJson) =>
+        public static string ControllerUser(string playerText, string facts, string compactState, string schema) =>
 $@"Player action: {playerText}
-
-Known facts (recent & retrieved):
-{facts}
-
-Compact state:
-{compact}
-
-Return ONLY JSON (no markdown) that validates against this schema:
-{schemaJson}";
+Recent facts: {facts}
+Compact state: {compactState}
+Schema: {schema}
+Return only JSON.";
 
         public static string NarratorSystem =>
-@"You are the narrator. Write concise, vivid prose responding only to the latest action
-and the controller's beat. Do NOT introduce prewritten locations or canned scenes.
-Keep 2–5 sentences. Conclude with short options in one line (e.g., ""1) … 2) … 3) …"").
-End your output with <EOT> once the thought is complete.";
+@"You are a vivid but concise narrator. Write 2–6 sentences of immersive prose 
+that continue the story based ONLY on the provided beat and facts. 
+Do not invent separate quests or new settings beyond what the beat implies.
+End the final output with the token <EOT> to signal end-of-turn.";
 
-        public static string NarratorUser(string beatJson, string facts, string compact) =>
-$@"Beat (from controller as JSON):
-{beatJson}
-
-Facts:
-{facts}
-
-Compact state:
-{compact}
-
-Write the narrated response as instructed. End with <EOT>.";
+        public static string NarratorUser(string beatJson, string facts, string compactState) =>
+$@"Beat (JSON): {beatJson}
+Facts: {facts}
+State: {compactState}
+Write narration now. End with <EOT>.";
 
         public static string MemorySystem =>
-@"You identify new durable facts from (player text + narrator output).
-Return JSON: { ""facts"": [string, ...] }.
-Facts should be short, reusable, and setting-agnostic when possible.";
+@"You summarize the most important new facts players and GM will want remembered 
+in future turns. Return JSON with a ""facts"" array of short strings.";
 
-        public static string MemoryUser(string playerText, string prose) =>
+        public static string MemoryUser(string playerText, string narration) =>
 $@"Player: {playerText}
-Narrator: {prose}
+Narration: {narration}
+Return: {{ ""facts"": [""...""] }}";
+    }
 
-Return only JSON with key ""facts"" (may be empty).";
+    // Shared small DTOs used by the orchestrator
+    public sealed class Beat
+    {
+        public string? Title { get; set; }
+        public string? Summary { get; set; }
+        public StateChange? State_Changes { get; set; }
+        public string[]? Suggestions { get; set; }
+    }
+
+    public sealed class StateChange
+    {
+        public string? Location { get; set; }
+        public string[]? Flags_Add { get; set; }
+        public System.Collections.Generic.Dictionary<string, string>? Npc_Delta { get; set; }
+    }
+
+    public sealed class MemoryDelta
+    {
+        public System.Collections.Generic.List<string>? Facts { get; set; }
     }
 }

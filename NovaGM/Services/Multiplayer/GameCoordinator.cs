@@ -1,108 +1,101 @@
-// File: Services/Multiplayer/GameCoordinator.cs
+// NovaGM/Services/Multiplayer/GameCoordinator.cs
 using System;
-using System.Collections.Generic; // IAsyncEnumerable
-using System.Security.Cryptography;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Channels;
-using System.Threading.Tasks;
 
 namespace NovaGM.Services.Multiplayer
 {
-    public sealed class GameCoordinator
-    {
-        // Singleton used by UI + LocalServer
-        public static GameCoordinator Instance { get; } = new GameCoordinator();
-
-        private readonly Channel<PlayerInput> _inputs;
-        private readonly object _lock = new();
-        private string _currentCode;
-        private readonly CancellationTokenSource _cts = new();
-
-        public string CurrentCode
-        {
-            get { lock (_lock) return _currentCode; }
-        }
-
-        private GameCoordinator()
-        {
-            _inputs = Channel.CreateUnbounded<PlayerInput>(
-                new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
-
-            _currentCode = GenerateCode();
-        }
-
-        /// <summary>
-        /// Try to queue a player's input into the turn stream, validating the room code.
-        /// </summary>
-        public bool TryEnqueue(string code, string player, string text)
-        {
-            if (string.IsNullOrWhiteSpace(text)) return false;
-
-            lock (_lock)
-            {
-                if (!string.Equals(code, _currentCode, StringComparison.OrdinalIgnoreCase))
-                    return false;
-            }
-
-            return _inputs.Writer.TryWrite(new PlayerInput(player ?? "Player", text));
-        }
-
-        /// <summary>
-        /// Async stream of player inputs for the GM loop.
-        /// </summary>
-        public async IAsyncEnumerable<PlayerInput> ReadInputsAsync(
-            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
-        {
-            using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _cts.Token);
-            var reader = _inputs.Reader.ReadAllAsync(linked.Token);
-            await foreach (var item in reader)
-                yield return item;
-        }
-
-        /// <summary>
-        /// Regenerates a room code and clears the input queue (use when starting a new game).
-        /// </summary>
-        public void ResetRoom()
-        {
-            lock (_lock)
-                _currentCode = GenerateCode();
-
-            // Finish current stream and create a new channel for a new session.
-            _inputs.Writer.TryComplete();
-        }
-
-        /// <summary>Graceful stop of the input stream (lets readers unwind).</summary>
-        public void Complete() => _inputs.Writer.TryComplete();
-
-        /// <summary>Immediate cancellation (used during hard shutdown).</summary>
-        public void Cancel() => _cts.Cancel();
-
-        private static string GenerateCode(int len = 4)
-        {
-            const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I/O/1/0
-            Span<byte> bytes = stackalloc byte[len];
-            RandomNumberGenerator.Fill(bytes);
-            char[] chars = new char[len];
-            for (int i = 0; i < len; i++)
-                chars[i] = alphabet[bytes[i] % alphabet.Length];
-            return new string(chars);
-        }
-    }
-
-    public readonly struct PlayerInput
+    public sealed class PlayerInput
     {
         public string Player { get; }
         public string Text { get; }
+        public PlayerInput(string player, string text) { Player = player; Text = text; }
+        public override string ToString() => $"{Player}: {Text}";
+    }
 
-        // Alias to satisfy older code that looked for .Name
-        public string Name => Player;
+    public sealed class PlayerCharacter
+    {
+        public string Name { get; set; } = "";
+        public string Race { get; set; } = "";
+        public string Class { get; set; } = "";
+        public int STR { get; set; }
+        public int DEX { get; set; }
+        public int CON { get; set; }
+        public int INT { get; set; }
+        public int WIS { get; set; }
+        public int CHA { get; set; }
+    }
 
-        public PlayerInput(string player, string text)
+    /// Coordinates join code, inputs from LAN, and player character data.
+    public sealed class GameCoordinator
+    {
+        private readonly ConcurrentQueue<PlayerInput> _queue = new();
+        private readonly SemaphoreSlim _signal = new(0, int.MaxValue);
+        private readonly CancellationTokenSource _cts = new();
+        private readonly ConcurrentDictionary<string, PlayerCharacter> _players = new();
+
+        public string CurrentCode { get; private set; }
+
+        public GameCoordinator()
         {
-            Player = player ?? "Player";
-            Text = text ?? "";
+            CurrentCode = GenerateCode();
         }
 
-        public override string ToString() => $"{Player}: {Text}";
+        public void ResetRoom() => CurrentCode = GenerateCode();
+
+        public bool TryEnqueue(string code, string name, string text)
+        {
+            if (!string.Equals(code, CurrentCode, StringComparison.OrdinalIgnoreCase)) return false;
+            var player = string.IsNullOrWhiteSpace(name) ? "Player" : name.Trim();
+            _queue.Enqueue(new PlayerInput(player, text));
+            _signal.Release();
+            return true;
+        }
+
+        public void SetCharacter(string code, string name, PlayerCharacter pc)
+        {
+            if (!string.Equals(code, CurrentCode, StringComparison.OrdinalIgnoreCase)) return;
+            var key = NormalizeKey(name);
+            _players[key] = pc;
+        }
+
+        public bool TryGetCharacter(string code, string name, out PlayerCharacter pc)
+        {
+            pc = new PlayerCharacter();
+            if (!string.Equals(code, CurrentCode, StringComparison.OrdinalIgnoreCase)) return false;
+            return _players.TryGetValue(NormalizeKey(name), out pc!);
+        }
+
+        public async IAsyncEnumerable<PlayerInput> ReadInputsAsync([EnumeratorCancellation] CancellationToken ct)
+        {
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _cts.Token);
+            var token = linked.Token;
+            while (!token.IsCancellationRequested)
+            {
+                while (_queue.TryDequeue(out var v))
+                {
+                    yield return v;
+                    if (token.IsCancellationRequested) yield break;
+                }
+                try { await _signal.WaitAsync(token).ConfigureAwait(false); }
+                catch (OperationCanceledException) { yield break; }
+            }
+        }
+
+        public void Cancel()
+        {
+            try { _cts.Cancel(); } catch { }
+            try { _signal.Release(); } catch { }
+        }
+
+        private static string GenerateCode()
+        {
+            var r = Random.Shared;
+            return $"{(char)('A' + r.Next(26))}{(char)('A' + r.Next(26))}{r.Next(0, 10)}{r.Next(0, 10)}";
+        }
+
+        private static string NormalizeKey(string name) => (name ?? "").Trim().ToUpperInvariant();
     }
 }

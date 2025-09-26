@@ -1,104 +1,104 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
+using System.Linq;
 using Microsoft.Data.Sqlite;
 
-namespace NovaGM.Services
+namespace NovaGM.Services.Retrieval
 {
+    /// <summary>
+    /// Minimal SQLite-backed vector store.
+    /// Schema: vec(id INTEGER PK, text TEXT UNIQUE, vec BLOB) — vec is float32[dim] as raw bytes.
+    /// </summary>
     public sealed class VectorStoreSqlite
     {
         private readonly string _dbPath;
         private readonly int _dim;
 
-        public VectorStoreSqlite(string dbPath, int dim = 384)
+        public VectorStoreSqlite(string dbPath, int dim)
         {
-            _dbPath = dbPath;
-            _dim = dim;
-            Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+            _dbPath = dbPath ?? throw new ArgumentNullException(nameof(dbPath));
+            _dim = dim > 0 ? dim : throw new ArgumentOutOfRangeException(nameof(dim));
+
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(_dbPath)) ?? ".");
             EnsureSchema();
         }
 
-        private string ConnStr => $"Data Source={_dbPath};Cache=Shared";
+        private string ConnStr => new SqliteConnectionStringBuilder { DataSource = _dbPath }.ToString();
 
         private void EnsureSchema()
         {
-            using var cx = new SqliteConnection(ConnStr);
-            cx.Open();
-            using var cmd = cx.CreateCommand();
+            using var c = new SqliteConnection(ConnStr);
+            c.Open();
+            using var cmd = c.CreateCommand();
             cmd.CommandText =
-            @$"CREATE TABLE IF NOT EXISTS items(
-                   id   INTEGER PRIMARY KEY AUTOINCREMENT,
-                   text TEXT UNIQUE NOT NULL,
-                   dim  INTEGER NOT NULL,
-                   vec  BLOB NOT NULL
-               );
-               CREATE INDEX IF NOT EXISTS ix_items_text ON items(text);";
+            """
+            CREATE TABLE IF NOT EXISTS vec(
+                id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                text TEXT NOT NULL UNIQUE,
+                vec  BLOB NOT NULL
+            );
+            """;
             cmd.ExecuteNonQuery();
         }
 
-        public async Task UpsertAsync(IEnumerable<string> texts, IEmbedder embedder)
+        public void UpsertMany(IEnumerable<(string text, float[] vector)> rows)
         {
-            using var cx = new SqliteConnection(ConnStr);
-            await cx.OpenAsync();
+            using var c = new SqliteConnection(ConnStr);
+            c.Open();
+            using var tx = c.BeginTransaction();
 
-            using var tx = cx.BeginTransaction();
-            foreach (var t in texts)
+            foreach (var (text, vector) in rows)
             {
-                if (string.IsNullOrWhiteSpace(t)) continue;
-                var v = embedder.Embed(t);
-                if (v.Length != _dim) continue;
+                if (string.IsNullOrWhiteSpace(text)) continue;
+                if (vector == null || vector.Length != _dim) continue;
 
-                byte[] blob = new byte[v.Length * sizeof(float)];
-                Buffer.BlockCopy(v, 0, blob, 0, blob.Length);
-
-                var cmd = cx.CreateCommand();
-                cmd.Transaction = tx;
-                cmd.CommandText = @"INSERT OR IGNORE INTO items(text, dim, vec) VALUES ($t,$d,$v);";
-                cmd.Parameters.AddWithValue("$t", t);
-                cmd.Parameters.AddWithValue("$d", _dim);
-                cmd.Parameters.Add("$v", SqliteType.Blob).Value = blob;
-                await cmd.ExecuteNonQueryAsync();
+                using var cmd = c.CreateCommand();
+                cmd.CommandText =
+                """
+                INSERT INTO vec(text, vec) VALUES($t, $v)
+                ON CONFLICT(text) DO UPDATE SET vec = excluded.vec;
+                """;
+                cmd.Parameters.AddWithValue("$t", text);
+                cmd.Parameters.AddWithValue("$v", FloatArrayToBytes(vector));
+                cmd.ExecuteNonQuery();
             }
-            await tx.CommitAsync();
+
+            tx.Commit();
         }
 
-        public async Task<List<(string Text, float Score)>> TopKAsync(float[] q, int k = 6)
+        public List<(string text, float[] vec)> LoadAll()
         {
-            var list = new List<(string Text, float Score)>(k);
-            using var cx = new SqliteConnection(ConnStr);
-            await cx.OpenAsync();
+            var list = new List<(string, float[])>();
+            using var c = new SqliteConnection(ConnStr);
+            c.Open();
 
-            var cmd = cx.CreateCommand();
-            cmd.CommandText = "SELECT text, vec FROM items;";
-            using var rd = await cmd.ExecuteReaderAsync();
-
-            while (await rd.ReadAsync())
+            using var cmd = c.CreateCommand();
+            cmd.CommandText = "SELECT text, vec FROM vec;";
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
             {
-                var text = rd.GetString(0);
-                var blob = (byte[])rd[1];
-                var v = new float[_dim];
-                Buffer.BlockCopy(blob, 0, v, 0, blob.Length);
-                float score = Cosine(q, v);
-                InsertTopK(list, (text, score), k);
+                var text = r.GetString(0);
+                var blob = (byte[])r["vec"];
+                var vec = BytesToFloatArray(blob, _dim);
+                list.Add((text, vec));
             }
             return list;
         }
 
-        private static void InsertTopK(List<(string Text, float Score)> list, (string Text, float Score) item, int k)
+        private static byte[] FloatArrayToBytes(float[] v)
         {
-            int i = list.FindIndex(t => item.Score > t.Score);
-            if (i < 0) list.Add(item);
-            else list.Insert(i, item);
-            if (list.Count > k) list.RemoveAt(list.Count - 1);
+            var bytes = new byte[v.Length * sizeof(float)];
+            Buffer.BlockCopy(v, 0, bytes, 0, bytes.Length);
+            return bytes;
         }
 
-        private static float Cosine(float[] a, float[] b)
+        private static float[] BytesToFloatArray(byte[] bytes, int dim)
         {
-            double dot = 0, na = 0, nb = 0;
-            for (int i = 0; i < a.Length; i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
-            if (na == 0 || nb == 0) return 0f;
-            return (float)(dot / Math.Sqrt(na * nb));
+            var v = new float[bytes.Length / sizeof(float)];
+            Buffer.BlockCopy(bytes, 0, v, 0, bytes.Length);
+            if (v.Length != dim) Array.Resize(ref v, dim);
+            return v;
         }
     }
 }

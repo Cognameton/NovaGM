@@ -1,43 +1,65 @@
 using System;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
-using System.Text.RegularExpressions;
 
-namespace NovaGM.Services
+namespace NovaGM.Services.Retrieval
 {
+    public interface IEmbedder
+    {
+        int Dim { get; }
+        float[] Embed(string text);
+    }
+
+    /// <summary>
+    /// Tiny, dependency-free, deterministic embedder:
+    /// SHA256 over tokens → sign-projected bag-of-words → L2 normalized.
+    /// Not semantic, but good enough for quick “similar-ish” matches offline.
+    /// </summary>
     public sealed class HashEmbedder : IEmbedder
     {
-        private static readonly Regex Splitter = new(@"[^\p{L}\p{Nd}]+", RegexOptions.Compiled);
-        public int Dimension { get; }
-        public HashEmbedder(int dim = 384) => Dimension = dim;
+        public int Dim { get; }
+
+        public HashEmbedder(int dim = 384)
+        {
+            if (dim <= 0) throw new ArgumentOutOfRangeException(nameof(dim));
+            Dim = dim;
+        }
 
         public float[] Embed(string text)
         {
-            var v = new float[Dimension];
-            if (string.IsNullOrWhiteSpace(text)) return v;
+            var v = new float[Dim];
+            if (string.IsNullOrWhiteSpace(text))
+                return v;
 
-            foreach (var tok in Splitter.Split(text.ToLowerInvariant()).Where(t => t.Length > 0))
+            var tokens = Tokenize(text);
+            using var sha = SHA256.Create();
+
+            foreach (var t in tokens)
             {
-                uint h = Fnv1a(tok);
-                int idx = (int)(h % (uint)Dimension);
-                v[idx] += 1f;
+                var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(t));
+                // Use bytes to set +/- 1 into each dimension (cycle if needed)
+                for (int i = 0; i < Dim; i++)
+                {
+                    // pick a bit deterministically
+                    var b = bytes[(i * 7) % bytes.Length];
+                    v[i] += ((b & 1) == 0) ? 1f : -1f;
+                }
             }
+
             // L2 normalize
-            double norm = Math.Sqrt(v.Sum(f => (double)f * f));
-            if (norm > 0) for (int i = 0; i < v.Length; i++) v[i] = (float)(v[i] / norm);
+            float norm = (float)Math.Sqrt(v.Sum(x => x * x)) + 1e-6f;
+            for (int i = 0; i < Dim; i++) v[i] /= norm;
             return v;
         }
 
-        private static uint Fnv1a(string s)
+        private static string[] Tokenize(string s)
         {
-            const uint FNV_PRIME = 16777619;
-            uint hash = 2166136261;
-            foreach (var ch in Encoding.UTF8.GetBytes(s))
-            {
-                hash ^= ch;
-                hash *= FNV_PRIME;
-            }
-            return hash;
+            var sb = new StringBuilder(s.Length);
+            foreach (var ch in s)
+                sb.Append(char.IsLetterOrDigit(ch) ? char.ToLowerInvariant(ch) : ' ');
+            return sb.ToString()
+                     .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         }
     }
 }

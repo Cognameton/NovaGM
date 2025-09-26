@@ -1,10 +1,9 @@
-// File: Services/Retrieval/Streaming/LocalServer.cs
+// NovaGM/Services/Retrieval/Streaming/LocalServer.cs
 using System;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading;
@@ -14,12 +13,12 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using NovaGM.Services;
 using NovaGM.Services.Multiplayer;
-using QRCoder;
 
 namespace NovaGM.Services.Streaming
 {
-    /// Minimal in-process ASP.NET Core server for join/play/SSE on the local network.
+    /// Minimal in-process ASP.NET Core server for join/play/SSE and player HUD.
     public sealed class LocalServer : IDisposable
     {
         private readonly GameCoordinator _coordinator;
@@ -46,53 +45,245 @@ namespace NovaGM.Services.Streaming
                 {
                     web.UseKestrel()
                        .UseUrls(url)
-                       .ConfigureServices(s => s.AddRouting())
+                       .ConfigureServices(services => services.AddRouting())
                        .Configure(app =>
                        {
                            app.UseRouting();
+
                            app.UseEndpoints(endpoints =>
                            {
                                // GET /
                                endpoints.MapGet("/", async ctx =>
                                {
-                                   var code = _coordinator.CurrentCode ?? "";
-                                   var codeHtml = HtmlEncoder.Default.Encode(code);
-
-                                   var lanList = LanIps.Length == 0
-                                       ? "<li>(no LAN IPv4 detected)</li>"
-                                       : string.Join("", LanIps.Select(ip =>
-                                           $"<li><a href=\"http://{ip}:{Port}/\">http://{ip}:{Port}/</a></li>"));
-
-                                   var html = BuildJoinPage(codeHtml, lanList);
                                    ctx.Response.ContentType = "text/html; charset=utf-8";
-                                   await ctx.Response.WriteAsync(html);
+                                   var code = _coordinator.CurrentCode;
+                                   await ctx.Response.WriteAsync($@"<!doctype html>
+<html><head><meta charset='utf-8'><title>NovaGM — Join</title>
+<style>body{{font-family:sans-serif;margin:2rem;}}input,button{{font-size:1rem;}}</style></head>
+<body>
+  <h2>Join NovaGM</h2>
+  <p>Room code: <b>{WebUtility.HtmlEncode(code)}</b></p>
+  <form action='/hud' method='get'>
+    <label>Your name: <input name='name' required></label>
+    <input type='hidden' name='code' value='{WebUtility.HtmlEncode(code)}'>
+    <button type='submit'>Continue</button>
+  </form>
+  <p style='margin-top:1rem;color:#666'>Already joined? <a href='/play?name=Player&code={WebUtility.HtmlEncode(code)}'>Go to chat view</a></p>
+</body></html>");
                                });
 
-                               // GET /play
+                               // GET /play  (simple chat view)
                                endpoints.MapGet("/play", async ctx =>
                                {
                                    var name = ctx.Request.Query["name"].ToString();
                                    var code = ctx.Request.Query["code"].ToString();
+                                   var nameJs = JavaScriptEncoder.Default.Encode(name);
+                                   var codeJs = JavaScriptEncoder.Default.Encode(code);
 
-                                   var nameHtml = HtmlEncoder.Default.Encode(name);
-                                   var codeJs   = JavaScriptEncoder.Default.Encode(code);
-                                   var nameJs   = JavaScriptEncoder.Default.Encode(name);
-
-                                   var html = BuildPlayPage(nameHtml, codeJs, nameJs);
                                    ctx.Response.ContentType = "text/html; charset=utf-8";
-                                   await ctx.Response.WriteAsync(html);
+                                   await ctx.Response.WriteAsync($@"<!doctype html>
+<html><head><meta charset='utf-8'><title>NovaGM — {WebUtility.HtmlEncode(name)}</title>
+<style>
+body{{font-family:sans-serif;margin:1rem;}}
+#log{{white-space:pre-wrap;border:1px solid #ddd;padding:10px;height:60vh;overflow:auto;border-radius:6px;}}
+#row{{margin-top:8px;display:flex;gap:8px;}}
+textarea{{flex:1;min-height:3em;}}
+</style></head>
+<body>
+  <h3>NovaGM — {WebUtility.HtmlEncode(name)}</h3>
+  <div id='log'></div>
+  <div id='row'>
+    <textarea id='msg' placeholder='Your action...'></textarea>
+    <button id='send'>Send</button>
+  </div>
+<script>
+const log = document.getElementById('log');
+const msg = document.getElementById('msg');
+const send = document.getElementById('send');
+const es = new EventSource('/stream');
+es.onmessage = (e) => {{ log.textContent += e.data; log.scrollTop = log.scrollHeight; }};
+send.onclick = async () => {{
+  const text = msg.value.trim();
+  if(!text) return;
+  msg.value = '';
+  await fetch('/input', {{
+    method: 'POST',
+    headers: {{ 'Content-Type': 'application/json' }},
+    body: JSON.stringify({{ code: '{codeJs}', name: '{nameJs}', text }})
+  }});
+}};
+</script>
+</body></html>");
                                });
 
-                               // GET /stream  (SSE)
+                               // GET /hud  (player HUD with Character tab + Action)
+                               endpoints.MapGet("/hud", async ctx =>
+                               {
+                                   var name = ctx.Request.Query["name"].ToString();
+                                   var code = ctx.Request.Query["code"].ToString();
+                                   var nameJs = JavaScriptEncoder.Default.Encode(name);
+                                   var codeJs = JavaScriptEncoder.Default.Encode(code);
+
+                                   ctx.Response.ContentType = "text/html; charset=utf-8";
+                                   await ctx.Response.WriteAsync($@"<!doctype html>
+<html><head><meta charset='utf-8'><title>NovaGM — HUD ({WebUtility.HtmlEncode(name)})</title>
+<meta name=viewport content='width=device-width, initial-scale=1'/>
+<style>
+body{{font-family:sans-serif;margin:12px;}}
+.nav{{display:flex;gap:12px;margin-bottom:12px;}}
+.nav a{{text-decoration:none;padding:6px 10px;border:1px solid #ccc;border-radius:6px;}}
+.card{{border:1px solid #ddd;border-radius:8px;padding:10px;margin-bottom:12px;}}
+.row{{display:flex;gap:8px;flex-wrap:wrap}}
+.row>label{{display:flex;flex-direction:column;min-width:120px;}}
+input[type=number]{{width:70px}}
+button{{padding:6px 10px}}
+</style></head>
+<body>
+  <div class='nav'>
+    <a href='#char'>Character</a>
+    <a href='#act'>Action</a>
+    <a href='/play?name={WebUtility.HtmlEncode(name)}&code={WebUtility.HtmlEncode(code)}'>Text View</a>
+  </div>
+
+  <div id='char' class='card'>
+    <h3>Character</h3>
+    <div class='row'>
+      <label>Name<input id='pc_name'/></label>
+      <label>Race<input id='pc_race'/></label>
+      <label>Class<input id='pc_class'/></label>
+    </div>
+    <div class='row' style='margin-top:6px'>
+      <label>STR<input id='pc_str' type='number'/></label>
+      <label>DEX<input id='pc_dex' type='number'/></label>
+      <label>CON<input id='pc_con' type='number'/></label>
+      <label>INT<input id='pc_int' type='number'/></label>
+      <label>WIS<input id='pc_wis' type='number'/></label>
+      <label>CHA<input id='pc_cha' type='number'/></label>
+    </div>
+    <div style='margin-top:8px'><button id='save'>Save</button></div>
+  </div>
+
+  <div id='act' class='card'>
+    <h3>Action</h3>
+    <textarea id='msg' style='width:100%;min-height:5em' placeholder='Your action...'></textarea>
+    <div style='margin-top:6px'><button id='send'>Send</button></div>
+  </div>
+
+<script>
+const nameV = '{nameJs}', codeV = '{codeJs}';
+
+// load existing pc
+(async () => {{
+  const r = await fetch(`/character?name=${{encodeURIComponent(nameV)}}&code=${{encodeURIComponent(codeV)}}`);
+  if(r.ok) {{
+    const pc = await r.json();
+    if(pc) {{
+      for (const [k,v] of Object.entries(pc)) {{
+        const el = document.getElementById('pc_' + k.toLowerCase());
+        if(el) el.value = v ?? '';
+      }}
+    }}
+  }}
+}})();
+
+document.getElementById('save').onclick = async () => {{
+  const pc = {{
+    Name:  document.getElementById('pc_name').value,
+    Race:  document.getElementById('pc_race').value,
+    Class: document.getElementById('pc_class').value,
+    STR: +document.getElementById('pc_str').value||0,
+    DEX: +document.getElementById('pc_dex').value||0,
+    CON: +document.getElementById('pc_con').value||0,
+    INT: +document.getElementById('pc_int').value||0,
+    WIS: +document.getElementById('pc_wis').value||0,
+    CHA: +document.getElementById('pc_cha').value||0
+  }};
+  await fetch('/character', {{
+    method:'POST',
+    headers: {{'Content-Type':'application/json'}},
+    body: JSON.stringify({{ code: codeV, name: nameV, pc }})
+  }});
+  alert('Saved!');
+}};
+
+document.getElementById('send').onclick = async () => {{
+  const box = document.getElementById('msg');
+  const text = box.value.trim();
+  if(!text) return;
+  box.value = '';
+  await fetch('/input', {{
+    method:'POST',
+    headers: {{'Content-Type':'application/json'}},
+    body: JSON.stringify({{ code: codeV, name: nameV, text }})
+  }});
+}};
+</script>
+</body></html>");
+                               });
+
+                               // GET /character?name=&code=
+                               endpoints.MapGet("/character", async ctx =>
+                               {
+                                   var name = ctx.Request.Query["name"].ToString();
+                                   var code = ctx.Request.Query["code"].ToString();
+                                   ctx.Response.ContentType = "application/json";
+                                   if (_coordinator.TryGetCharacter(code, name, out var pc))
+                                   {
+                                       await ctx.Response.WriteAsync(JsonSerializer.Serialize(pc));
+                                   }
+                                   else
+                                   {
+                                       await ctx.Response.WriteAsync("null");
+                                   }
+                               });
+
+                               // POST /character { code, name, pc:{} }
+                               endpoints.MapPost("/character", async ctx =>
+                               {
+                                   using var sr = new StreamReader(ctx.Request.Body);
+                                   var body = await sr.ReadToEndAsync();
+                                   try
+                                   {
+                                       using var doc = JsonDocument.Parse(body);
+                                       var root = doc.RootElement;
+                                       var code = root.GetProperty("code").GetString() ?? "";
+                                       var name = root.GetProperty("name").GetString() ?? "";
+                                       var pc   = root.GetProperty("pc");
+
+                                       var model = new PlayerCharacter
+                                       {
+                                           Name  = pc.GetProperty("Name").GetString() ?? "",
+                                           Race  = pc.GetProperty("Race").GetString() ?? "",
+                                           Class = pc.GetProperty("Class").GetString() ?? "",
+                                           STR = pc.TryGetProperty("STR", out var str) ? str.GetInt32() : 0,
+                                           DEX = pc.TryGetProperty("DEX", out var dex) ? dex.GetInt32() : 0,
+                                           CON = pc.TryGetProperty("CON", out var con) ? con.GetInt32() : 0,
+                                           INT = pc.TryGetProperty("INT", out var intel) ? intel.GetInt32() : 0,
+                                           WIS = pc.TryGetProperty("WIS", out var wis) ? wis.GetInt32() : 0,
+                                           CHA = pc.TryGetProperty("CHA", out var cha) ? cha.GetInt32() : 0,
+                                       };
+
+                                       _coordinator.SetCharacter(code, name, model);
+                                       ctx.Response.StatusCode = 204;
+                                   }
+                                   catch
+                                   {
+                                       ctx.Response.StatusCode = 400;
+                                       await ctx.Response.WriteAsync("bad json");
+                                   }
+                               });
+
+                               // GET /stream  (SSE) — linked to app shutdown + this server shutdown
                                endpoints.MapGet("/stream", async ctx =>
                                {
                                    ctx.Response.Headers.Append("Cache-Control", "no-cache");
                                    ctx.Response.Headers.Append("Content-Type", "text/event-stream");
                                    ctx.Response.Headers.Append("X-Accel-Buffering", "no");
 
-                                   var linked = CancellationTokenSource.CreateLinkedTokenSource(
+                                   using var linked = CancellationTokenSource.CreateLinkedTokenSource(
                                        ctx.RequestAborted,
-                                       _shutdownCts!.Token
+                                       _shutdownCts!.Token,
+                                       ShutdownUtil.Token
                                    );
                                    var token = linked.Token;
 
@@ -106,11 +297,7 @@ namespace NovaGM.Services.Streaming
                                    }
                                    catch (OperationCanceledException)
                                    {
-                                       // expected on shutdown / disconnect
-                                   }
-                                   finally
-                                   {
-                                       linked.Dispose();
+                                       // expected on shutdown
                                    }
                                });
 
@@ -121,11 +308,11 @@ namespace NovaGM.Services.Streaming
                                    var body = await sr.ReadToEndAsync();
                                    try
                                    {
-                                       using var doc  = JsonDocument.Parse(body);
-                                       var root       = doc.RootElement;
-                                       var code       = root.GetProperty("code").GetString() ?? "";
-                                       var name       = root.GetProperty("name").GetString() ?? "Player";
-                                       var text       = root.GetProperty("text").GetString() ?? "";
+                                       using var doc = JsonDocument.Parse(body);
+                                       var root = doc.RootElement;
+                                       var code = root.GetProperty("code").GetString() ?? "";
+                                       var name = root.GetProperty("name").GetString() ?? "Player";
+                                       var text = root.GetProperty("text").GetString() ?? "";
 
                                        if (string.IsNullOrWhiteSpace(text))
                                        {
@@ -148,26 +335,19 @@ namespace NovaGM.Services.Streaming
                                    }
                                });
 
-                               // GET /qr?code=ABCD
-                               endpoints.MapGet("/qr", async ctx =>
-                               {
-                                   var code = ctx.Request.Query["code"].ToString();
-                                   var joinUrl = $"{ctx.Request.Scheme}://{ctx.Request.Host}/?code={WebUtility.UrlEncode(code)}";
-
-                                   using var qrGen = new QRCodeGenerator();
-                                   using var data  = qrGen.CreateQrCode(joinUrl, QRCodeGenerator.ECCLevel.Q);
-                                   var svg = new SvgQRCode(data).GetGraphic(6);
-                                   ctx.Response.ContentType = "image/svg+xml";
-                                   await ctx.Response.WriteAsync(svg);
-                               });
-
                                // GET /health
-                               endpoints.MapGet("/health", async ctx => { await ctx.Response.WriteAsync("ok"); });
+                               endpoints.MapGet("/health", async ctx =>
+                               {
+                                   await ctx.Response.WriteAsync("ok");
+                               });
                            });
                        });
                 }).Build();
 
             _host.Start();
+
+            // Let app-wide shutdown stop this host, too.
+            ShutdownUtil.RegisterAsyncDisposer(async () => await StopAsync());
 
             Console.WriteLine($"[NovaGM] Web UI bound to: {(allowLan ? $"0.0.0.0:{port}" : $"127.0.0.1:{port}")}");
             if (allowLan && LanIps.Length > 0)
@@ -182,22 +362,27 @@ namespace NovaGM.Services.Streaming
             }
         }
 
-        public void Dispose()
+        public async Task StopAsync()
         {
             try { _shutdownCts?.Cancel(); } catch { }
-
-            try
+            if (_host != null)
             {
-                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-                _host?.StopAsync(timeout.Token).GetAwaiter().GetResult();
+                try
+                {
+                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                    await _host.StopAsync(timeout.Token).ConfigureAwait(false);
+                }
+                catch { /* swallow */ }
+                try { _host.Dispose(); } catch { }
+                _host = null;
             }
-            catch { /* swallow */ }
-
-            try { _host?.Dispose(); } catch { }
             try { _shutdownCts?.Dispose(); } catch { }
-
-            _host = null;
             _shutdownCts = null;
+        }
+
+        public void Dispose()
+        {
+            try { StopAsync().GetAwaiter().GetResult(); } catch { }
         }
 
         private static string[] GetLanIPv4()
@@ -212,100 +397,6 @@ namespace NovaGM.Services.Streaming
                     .ToArray();
             }
             catch { return Array.Empty<string>(); }
-        }
-
-        // ---------- HTML builders (no raw-string literals) ----------
-
-        private static string BuildJoinPage(string codeHtml, string lanListHtml)
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine("<!doctype html>");
-            sb.AppendLine("<html>");
-            sb.AppendLine("<head>");
-            sb.AppendLine("  <meta charset=\"utf-8\" />");
-            sb.AppendLine("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />");
-            sb.AppendLine("  <title>NovaGM — Join</title>");
-            sb.AppendLine("  <style>");
-            sb.AppendLine("    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif;margin:2rem;line-height:1.35}");
-            sb.AppendLine("    input,button{font-size:1rem;padding:.5rem .75rem;border-radius:.4rem;border:1px solid #ccc}");
-            sb.AppendLine("    form{display:flex;gap:.5rem;flex-wrap:wrap}");
-            sb.AppendLine("    .row{display:flex;align-items:flex-start;gap:1rem;margin-top:1rem;}");
-            sb.AppendLine("    .qr{border:1px solid #ddd;border-radius:.5rem;padding:.5rem;background:#fff}");
-            sb.AppendLine("  </style>");
-            sb.AppendLine("</head>");
-            sb.AppendLine("<body>");
-            sb.AppendLine("  <h2>Join NovaGM</h2>");
-            sb.Append("  <p>Room code: <b>").Append(codeHtml).AppendLine("</b></p>");
-            sb.AppendLine("  <form action=\"/play\" method=\"get\">");
-            sb.AppendLine("    <label>Your name:");
-            sb.AppendLine("      <input name=\"name\" required placeholder=\"Player name\"/>");
-            sb.AppendLine("    </label>");
-            sb.Append("    <input type=\"hidden\" name=\"code\" value=\"").Append(codeHtml).AppendLine("\" />");
-            sb.AppendLine("    <button type=\"submit\">Join</button>");
-            sb.AppendLine("  </form>");
-            sb.AppendLine("  <div class=\"row\">");
-            sb.AppendLine("    <div>");
-            sb.AppendLine("      <p>Or scan this on your phone:</p>");
-            sb.Append("      <img class=\"qr\" alt=\"QR\" src=\"/qr?code=").Append(codeHtml).AppendLine("\" />");
-            sb.AppendLine("    </div>");
-            sb.AppendLine("    <div>");
-            sb.AppendLine("      <p>LAN URLs (same network):</p>");
-            sb.AppendLine("      <ul>");
-            sb.AppendLine(lanListHtml);
-            sb.AppendLine("      </ul>");
-            sb.AppendLine("    </div>");
-            sb.AppendLine("  </div>");
-            sb.AppendLine("</body>");
-            sb.AppendLine("</html>");
-            return sb.ToString();
-        }
-
-        private static string BuildPlayPage(string nameHtml, string codeJs, string nameJs)
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine("<!doctype html>");
-            sb.AppendLine("<html>");
-            sb.AppendLine("<head>");
-            sb.AppendLine("  <meta charset=\"utf-8\" />");
-            sb.AppendLine("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />");
-            sb.Append("  <title>NovaGM — ").Append(nameHtml).AppendLine("</title>");
-            sb.AppendLine("  <style>");
-            sb.AppendLine("    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif;margin:1rem}");
-            sb.AppendLine("    #log{white-space:pre-wrap;border:1px solid #ddd;padding:10px;height:60vh;overflow:auto;border-radius:6px;background:#fff}");
-            sb.AppendLine("    #row{margin-top:8px;display:flex;gap:8px}");
-            sb.AppendLine("    textarea{flex:1;min-height:3em}");
-            sb.AppendLine("    button{padding:.5rem .75rem;border-radius:.4rem;border:1px solid #ccc}");
-            sb.AppendLine("  </style>");
-            sb.AppendLine("</head>");
-            sb.AppendLine("<body>");
-            sb.Append("  <h3>NovaGM — ").Append(nameHtml).AppendLine("</h3>");
-            sb.AppendLine("  <div id=\"log\"></div>");
-            sb.AppendLine("  <div id=\"row\">");
-            sb.AppendLine("    <textarea id=\"msg\" placeholder=\"Your action...\"></textarea>");
-            sb.AppendLine("    <button id=\"send\">Send</button>");
-            sb.AppendLine("  </div>");
-            sb.AppendLine("  <script>");
-            sb.AppendLine("  const log  = document.getElementById('log');");
-            sb.AppendLine("  const msg  = document.getElementById('msg');");
-            sb.AppendLine("  const send = document.getElementById('send');");
-            sb.AppendLine("  const es = new EventSource('/stream');");
-            sb.AppendLine("  es.onmessage = (e) => {");
-            sb.AppendLine("    log.textContent += e.data;");
-            sb.AppendLine("    log.scrollTop = log.scrollHeight;");
-            sb.AppendLine("  };");
-            sb.AppendLine("  async function submit() {");
-            sb.AppendLine("    const text = msg.value.trim();");
-            sb.AppendLine("    if (!text) return;");
-            sb.AppendLine("    msg.value = '';");
-            sb.Append("    await fetch('/input', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: '")
-              .Append(codeJs).Append("', name: '").Append(nameJs).AppendLine("', text }) });");
-            sb.AppendLine("  }");
-            sb.AppendLine("  send.onclick = submit;");
-            sb.AppendLine("  msg.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); submit(); } });");
-            sb.AppendLine("  </script>");
-            sb.AppendLine("</body>");
-            sb.AppendLine("</html>");
-            return sb.ToString();
         }
     }
 }
