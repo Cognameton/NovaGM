@@ -25,3 +25,7 @@ NovaGM/NovaGM/bin/Debug/net8.0/llm/
 .venv/
 __pycache__/
 *.log
+-e 
+# Environment files
+*.env
+*.env.*
