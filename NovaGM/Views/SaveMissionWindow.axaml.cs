@@ -194,22 +194,26 @@ namespace NovaGM.Views
                     Title = "Error",
                     Width = 300,
                     Height = 150,
-                    Content = new StackPanel
-                    {
-                        Margin = new Avalonia.Thickness(20),
-                        Spacing = 10,
-                        Children =
-                        {
-                            new TextBlock { Text = "Mission name is required." },
-                            new Button
-                            {
-                                Content = "OK",
-                                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                                Click = (s, args) => ((Window)((Button)s!).Parent!.Parent!).Close()
-                            }
-                        }
-                    }
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
                 };
+                
+                var stackPanel = new StackPanel
+                {
+                    Margin = new Avalonia.Thickness(20),
+                    Spacing = 10
+                };
+                
+                stackPanel.Children.Add(new TextBlock { Text = "Mission name is required." });
+                
+                var okButton = new Button
+                {
+                    Content = "OK",
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                };
+                okButton.Click += (s, args) => messageBox.Close();
+                stackPanel.Children.Add(okButton);
+                
+                messageBox.Content = stackPanel;
                 messageBox.ShowDialog(this);
                 return;
             }
