@@ -195,47 +195,46 @@ namespace NovaGM.ViewModels
                         Title = "Kick Player",
                         Width = 300,
                         Height = 180,
-                        Content = new StackPanel
-                        {
-                            Margin = new Avalonia.Thickness(20),
-                            Spacing = 10,
-                            Children =
-                            {
-                                new TextBlock { Text = "Enter player name to kick:" },
-                                new TextBox { Name = "PlayerNameBox", Watermark = "Player name..." },
-                                new StackPanel
-                                {
-                                    Orientation = Avalonia.Layout.Orientation.Horizontal,
-                                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                                    Spacing = 10,
-                                    Children =
-                                    {
-                                        new Button 
-                                        { 
-                                            Content = "Cancel",
-                                            MinWidth = 60,
-                                            Click = (s, args) => 
-                                            {
-                                                var window = (Window)((Button)s!).Parent!.Parent!.Parent!;
-                                                window.Close(null);
-                                            }
-                                        },
-                                        new Button 
-                                        { 
-                                            Content = "Kick",
-                                            MinWidth = 60,
-                                            Click = (s, args) => 
-                                            {
-                                                var window = (Window)((Button)s!).Parent!.Parent!.Parent!;
-                                                var textBox = (TextBox)((StackPanel)window.Content!).Children[1];
-                                                window.Close(textBox.Text?.Trim());
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        WindowStartupLocation = WindowStartupLocation.CenterOwner
                     };
+
+                    var stackPanel = new StackPanel
+                    {
+                        Margin = new Avalonia.Thickness(20),
+                        Spacing = 10
+                    };
+
+                    stackPanel.Children.Add(new TextBlock { Text = "Enter player name to kick:" });
+                    
+                    var nameBox = new TextBox { Name = "PlayerNameBox", Watermark = "Player name..." };
+                    stackPanel.Children.Add(nameBox);
+
+                    var buttonPanel = new StackPanel
+                    {
+                        Orientation = Avalonia.Layout.Orientation.Horizontal,
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                        Spacing = 10
+                    };
+
+                    var cancelButton = new Button 
+                    { 
+                        Content = "Cancel",
+                        MinWidth = 60
+                    };
+                    cancelButton.Click += (s, args) => kickDialog.Close(null);
+
+                    var kickButton = new Button 
+                    { 
+                        Content = "Kick",
+                        MinWidth = 60
+                    };
+                    kickButton.Click += (s, args) => kickDialog.Close(nameBox.Text?.Trim());
+
+                    buttonPanel.Children.Add(cancelButton);
+                    buttonPanel.Children.Add(kickButton);
+                    stackPanel.Children.Add(buttonPanel);
+
+                    kickDialog.Content = stackPanel;
 
                     var result = await kickDialog.ShowDialog<string?>(Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null);
                     
