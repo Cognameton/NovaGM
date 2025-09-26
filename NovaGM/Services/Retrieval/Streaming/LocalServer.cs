@@ -349,6 +349,33 @@ document.getElementById('send').onclick = async () => {{
                                    }
                                });
 
+                               // POST /dice  { expression }
+                               endpoints.MapPost("/dice", async ctx =>
+                               {
+                                   using var sr = new StreamReader(ctx.Request.Body);
+                                   var body = await sr.ReadToEndAsync();
+                                   try
+                                   {
+                                       using var doc = JsonDocument.Parse(body);
+                                       var expr = doc.RootElement.GetProperty("expression").GetString() ?? "1d20";
+                                       var result = DiceService.Roll(expr);
+                                       
+                                       ctx.Response.ContentType = "application/json";
+                                       await ctx.Response.WriteAsync(JsonSerializer.Serialize(new
+                                       {
+                                           expression = result.Expression,
+                                           rolls = result.Rolls,
+                                           total = result.Total,
+                                           description = result.Description
+                                       }));
+                                   }
+                                   catch
+                                   {
+                                       ctx.Response.StatusCode = 400;
+                                       await ctx.Response.WriteAsync("bad request");
+                                   }
+                               });
+
                                // GET /health
                                endpoints.MapGet("/health", async ctx =>
                                {

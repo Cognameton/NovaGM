@@ -16,7 +16,15 @@
         <MenuItem Header="_New Game" Command="{Binding NewGameCommand}" />
         <MenuItem Header="_Continue Game" Command="{Binding ContinueGameCommand}" />
         <Separator/>
+        <MenuItem Header="_Save to Journal" Command="{Binding SaveToJournalCommand}" />
+        <MenuItem Header="_Save as Mission" Command="{Binding SaveAsMissionCommand}" />
+        <Separator/>
         <MenuItem Header="E_xit" Command="{Binding ExitCommand}" />
+      </MenuItem>
+
+      <MenuItem Header="_Players">
+        <MenuItem Header="_Kick Player" Command="{Binding KickPlayerCommand}" />
+        <MenuItem Header="_Load Scenario" Command="{Binding LoadScenarioCommand}" />
       </MenuItem>
 
       <MenuItem Header="_Packs">

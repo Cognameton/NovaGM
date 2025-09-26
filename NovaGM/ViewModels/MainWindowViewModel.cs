@@ -41,6 +41,10 @@ namespace NovaGM.ViewModels
         public ICommand OpenSettingsCommand { get; }
         public ICommand OpenModelsCommand { get; }
         public ICommand AboutCommand { get; }
+        public ICommand SaveToJournalCommand { get; }
+        public ICommand SaveAsMissionCommand { get; }
+        public ICommand KickPlayerCommand { get; }
+        public ICommand LoadScenarioCommand { get; }
 
         private readonly AgentOrchestrator _agent = new();
         private readonly SemaphoreSlim _turnLock = new(1, 1);
@@ -148,6 +152,35 @@ namespace NovaGM.ViewModels
                 return Task.CompletedTask;
             });
 
+            SaveToJournalCommand = new RelayCommand(_ =>
+            {
+                var sessionSummary = GenerateSessionSummary();
+                JournalEntries.Add($"[Session {DateTime.Now:yyyy-MM-dd}] {sessionSummary}");
+                Messages.Add(new Message("GM", "Current session saved to journal."));
+                return Task.CompletedTask;
+            });
+
+            SaveAsMissionCommand = new RelayCommand(_ =>
+            {
+                // TODO: Implement mission save to pack system
+                Messages.Add(new Message("GM", "Mission save feature coming soon."));
+                return Task.CompletedTask;
+            });
+
+            KickPlayerCommand = new RelayCommand(_ =>
+            {
+                // TODO: Implement player kick functionality
+                Messages.Add(new Message("GM", "Player management coming soon."));
+                return Task.CompletedTask;
+            });
+
+            LoadScenarioCommand = new RelayCommand(_ =>
+            {
+                // TODO: Implement scenario loading from packs
+                Messages.Add(new Message("GM", "Scenario loading coming soon."));
+                return Task.CompletedTask;
+            });
+
             // Consume LAN player inputs
             _ = Task.Run(async () =>
             {
@@ -198,6 +231,17 @@ namespace NovaGM.ViewModels
                 });
             }
             finally { _turnLock.Release(); }
+        }
+
+        private string GenerateSessionSummary()
+        {
+            var recentMessages = Messages.TakeLast(10).Where(m => m.Role == "GM").ToList();
+            if (recentMessages.Count == 0) return "Empty session";
+            
+            var summary = string.Join(" ", recentMessages.Select(m => 
+                m.Content.Length > 100 ? m.Content.Substring(0, 100) + "..." : m.Content));
+            
+            return summary.Length > 200 ? summary.Substring(0, 200) + "..." : summary;
         }
     }
 
