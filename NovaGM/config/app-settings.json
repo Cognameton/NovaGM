@@ -1,0 +1,35 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "LLama": "Information"
+    }
+  },
+  "NovaGM": {
+    "Server": {
+      "DefaultPort": 5055,
+      "AllowLAN": false,
+      "MaxPlayers": 8
+    },
+    "AI": {
+      "ModelPath": "./llm",
+      "DefaultModel": "auto",
+      "ContextSize": 2048,
+      "MaxTokens": 256,
+      "Temperature": 0.7,
+      "UseGPU": false,
+      "GPULayers": 0
+    },
+    "Game": {
+      "SessionTimeout": 3600,
+      "AutoSave": true,
+      "AutoSaveInterval": 300
+    },
+    "UI": {
+      "Theme": "Dark",
+      "Language": "en-US",
+      "ShowDebugInfo": false
+    }
+  }
+}

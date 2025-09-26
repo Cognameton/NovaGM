@@ -28,6 +28,9 @@ namespace NovaGM.Services.Streaming
         public int Port { get; private set; }
         public bool AllowLan { get; private set; }
         public string[] LanIps { get; private set; } = Array.Empty<string>();
+        public string JoinUrl => AllowLan && LanIps.Length > 0 
+            ? $"http://{LanIps[0]}:{Port}" 
+            : $"http://127.0.0.1:{Port}";
 
         public LocalServer(GameCoordinator coordinator) => _coordinator = coordinator;
 
@@ -57,12 +60,23 @@ namespace NovaGM.Services.Streaming
                                {
                                    ctx.Response.ContentType = "text/html; charset=utf-8";
                                    var code = _coordinator.CurrentCode;
+                                   var qrDataUrl = "";
+                                   try
+                                   {
+                                       var joinUrl = AllowLan && LanIps.Length > 0 
+                                           ? $"http://{LanIps[0]}:{Port}?code={code}" 
+                                           : $"http://127.0.0.1:{Port}?code={code}";
+                                       qrDataUrl = QRCodeService.GenerateQRCodeDataUrl(joinUrl);
+                                   }
+                                   catch { /* QR generation failed, continue without */ }
+
                                    await ctx.Response.WriteAsync($@"<!doctype html>
 <html><head><meta charset='utf-8'><title>NovaGM — Join</title>
 <style>body{{font-family:sans-serif;margin:2rem;}}input,button{{font-size:1rem;}}</style></head>
 <body>
   <h2>Join NovaGM</h2>
   <p>Room code: <b>{WebUtility.HtmlEncode(code)}</b></p>
+  {(string.IsNullOrEmpty(qrDataUrl) ? "" : $"<p><img src='{qrDataUrl}' alt='QR Code' style='border:1px solid #ddd;'/></p>")}
   <form action='/hud' method='get'>
     <label>Your name: <input name='name' required></label>
     <input type='hidden' name='code' value='{WebUtility.HtmlEncode(code)}'>

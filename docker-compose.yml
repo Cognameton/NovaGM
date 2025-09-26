@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  novagm:
+    build: .
+    ports:
+      - "5055:5055"
+    volumes:
+      - ./llm:/app/llm:ro
+      - ./config:/app/config:ro
+      - novagm-data:/app/data
+      - novagm-logs:/app/logs
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - NOVAGM_GPU_LAYERS=0
+      - NOVAGM_ALLOW_LAN=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5055/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  novagm-data:
+  novagm-logs:
