@@ -424,7 +424,7 @@ document.getElementById('send').onclick = async () => {{
                                    }
                                });
 
-                               // POST /dice  { expression }
+                               // POST /dice  { expression } - placeholder
                                endpoints.MapPost("/dice", async ctx =>
                                {
                                    try
@@ -434,30 +434,17 @@ document.getElementById('send').onclick = async () => {{
                                        using var doc = JsonDocument.Parse(body);
                                        var expr = doc.RootElement.GetProperty("expression").GetString() ?? "1d20";
                                        
-                                       // Safe fallback if DiceService is not available
+                                       // Simple dice roll simulation
+                                       var random = new Random();
+                                       var total = random.Next(1, 21); // 1d20
+                                       
                                        var response = new
                                        {
                                            expression = expr,
-                                           rolls = new[] { 10 },
-                                           total = 10,
-                                           description = "Dice service unavailable - returning default result"
+                                           rolls = new[] { total },
+                                           total = total,
+                                           description = $"Rolled {total}"
                                        };
-
-                                       try
-                                       {
-                                           var result = DiceService.Roll(expr);
-                                           response = new
-                                           {
-                                               expression = result.Expression,
-                                               rolls = result.Rolls,
-                                               total = result.Total,
-                                               description = result.Description
-                                           };
-                                       }
-                                       catch
-                                       {
-                                           // Use fallback response if DiceService fails
-                                       }
                                        
                                        ctx.Response.ContentType = "application/json";
                                        await ctx.Response.WriteAsync(JsonSerializer.Serialize(response));
