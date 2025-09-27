@@ -314,13 +314,21 @@ namespace NovaGM.ViewModels
             {
                 try
                 {
-                    ServicesHost.Start(Port, true); // allowLan = true
+                    if (_localServer != null)
+                    {
+                        Messages.Add(new Message("GM", "Server is already running"));
+                        return;
+                    }
+
+                    _localServer = new LocalServer(GameCoordinator.Instance);
+                    _localServer.Start(Port, true); // Port from UI, allowLan = true
                     IsServerRunning = true;
                     OnPropertyChanged(nameof(IsServerRunning));
                     Messages.Add(new Message("GM", $"Server started on {LocalIp}:{Port}"));
                 }
                 catch (Exception ex)
                 {
+                    _localServer = null;
                     Messages.Add(new Message("GM", $"Server start failed: {ex.Message}"));
                 }
             });
@@ -329,10 +337,18 @@ namespace NovaGM.ViewModels
             {
                 try
                 {
-                    ServicesHost.Stop();
-                    IsServerRunning = false;
-                    OnPropertyChanged(nameof(IsServerRunning));
-                    Messages.Add(new Message("GM", "Server stopped"));
+                    if (_localServer != null)
+                    {
+                        _localServer.Dispose();
+                        _localServer = null;
+                        IsServerRunning = false;
+                        OnPropertyChanged(nameof(IsServerRunning));
+                        Messages.Add(new Message("GM", "Server stopped"));
+                    }
+                    else
+                    {
+                        Messages.Add(new Message("GM", "Server is not running"));
+                    }
                 }
                 catch (Exception ex)
                 {
