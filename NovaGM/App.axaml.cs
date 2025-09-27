@@ -24,7 +24,7 @@ namespace NovaGM
                 var coord = GameCoordinator.Instance;
                 _server = null; // Will be created when user clicks Start Server
 
-                var allowLan = true;
+
                 _server.Start(port, allowLan);
 
                 var mw = new MainWindow
