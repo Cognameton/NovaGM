@@ -310,7 +310,7 @@ namespace NovaGM.ViewModels
                 return Task.CompletedTask;
             });
 
-            StartServerCommand = new RelayCommand(async _ =>
+            StartServerCommand = new RelayCommand(_ =>
             {
                 try
                 {
@@ -331,6 +331,7 @@ namespace NovaGM.ViewModels
                     _localServer = null;
                     Messages.Add(new Message("GM", $"Server start failed: {ex.Message}"));
                 }
+                return Task.CompletedTask;
             });
 
             StopServerCommand = new RelayCommand(_ =>
