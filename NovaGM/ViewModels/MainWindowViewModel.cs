@@ -284,6 +284,61 @@ namespace NovaGM.ViewModels
                 }
             });
 
+            // Server commands
+            RegenerateRoomCommand = new RelayCommand(_ =>
+            {
+                GameCoordinator.Instance.ResetRoom();
+                OnPropertyChanged(nameof(RoomCode));
+                Messages.Add(new Message("GM", $"Room code regenerated: {RoomCode}"));
+                return Task.CompletedTask;
+            });
+
+            CopyJoinLinkCommand = new RelayCommand(_ =>
+            {
+                var joinUrl = $"http://{LocalIp}:{Port}";
+                try
+                {
+                    // Try to copy to clipboard (this is a simplified version)
+                    Messages.Add(new Message("GM", $"Join URL: {joinUrl}"));
+                }
+                catch
+                {
+                    Messages.Add(new Message("GM", $"Join URL: {joinUrl} (copy manually)"));
+                }
+                return Task.CompletedTask;
+            });
+
+            StartServerCommand = new RelayCommand(async _ =>
+            {
+                try
+                {
+                    ServicesHost.Start(Port, true); // allowLan = true
+                    IsServerRunning = true;
+                    OnPropertyChanged(nameof(IsServerRunning));
+                    Messages.Add(new Message("GM", $"Server started on {LocalIp}:{Port}"));
+                }
+                catch (Exception ex)
+                {
+                    Messages.Add(new Message("GM", $"Server start failed: {ex.Message}"));
+                }
+            });
+
+            StopServerCommand = new RelayCommand(_ =>
+            {
+                try
+                {
+                    ServicesHost.Stop();
+                    IsServerRunning = false;
+                    OnPropertyChanged(nameof(IsServerRunning));
+                    Messages.Add(new Message("GM", "Server stopped"));
+                }
+                catch (Exception ex)
+                {
+                    Messages.Add(new Message("GM", $"Server stop failed: {ex.Message}"));
+                }
+                return Task.CompletedTask;
+            });
+
             // Consume LAN player inputs
             _ = Task.Run(async () =>
             {
