@@ -1,0 +1,86 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="using:NovaGM.Models"
+        x:Class="NovaGM.Views.LoadScenarioWindow"
+        x:DataType="NovaGM.Views.LoadScenarioWindow"
+        Width="600" Height="450"
+        CanResize="True"
+        Title="Load Scenario — NovaGM">
+
+  <Border Padding="16">
+    <Grid RowDefinitions="Auto,*,Auto">
+      <TextBlock Text="Load Saved Mission" FontSize="18" FontWeight="SemiBold"/>
+
+      <Grid Grid.Row="1" Margin="0,16,0,16" ColumnDefinitions="1*,200">
+        
+        <!-- Mission List -->
+        <Border Grid.Column="0" 
+                BorderBrush="{DynamicResource Brush.Border}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="8">
+          <Grid RowDefinitions="Auto,*">
+            <TextBlock Text="Available Missions" FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <ListBox Grid.Row="1" 
+                     x:Name="MissionsList"
+                     SelectionChanged="MissionsList_SelectionChanged">
+              <ListBox.ItemTemplate>
+                <DataTemplate DataType="models:Mission">
+                  <StackPanel Margin="4" Spacing="2">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding Genre}" FontSize="11" Opacity="0.7"/>
+                    <TextBlock Text="{Binding Description}" 
+                               FontSize="11" 
+                               TextWrapping="Wrap"
+                               Opacity="0.8"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </Border>
+
+        <!-- Mission Details -->
+        <Border Grid.Column="1" 
+                Margin="12,0,0,0"
+                BorderBrush="{DynamicResource Brush.Border}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="8">
+          <ScrollViewer>
+            <StackPanel x:Name="DetailsPanel" Spacing="8">
+              <TextBlock Text="Select a mission to see details" 
+                         TextAlignment="Center"
+                         Opacity="0.6"
+                         Margin="0,20"/>
+            </StackPanel>
+          </ScrollViewer>
+        </Border>
+      </Grid>
+
+      <!-- Buttons -->
+      <StackPanel Grid.Row="2" 
+                  Orientation="Horizontal" 
+                  HorizontalAlignment="Right" 
+                  Spacing="8">
+        <Button Content="Refresh" 
+                MinWidth="80" 
+                Click="Refresh_Click"/>
+        <Button Content="Delete" 
+                MinWidth="80" 
+                Click="Delete_Click"
+                x:Name="DeleteButton"
+                IsEnabled="False"/>
+        <Button Content="Cancel" 
+                MinWidth="80" 
+                Click="Cancel_Click"/>
+        <Button Content="Load Mission" 
+                MinWidth="100" 
+                IsDefault="True" 
+                Click="LoadMission_Click"
+                x:Name="LoadButton"
+                IsEnabled="False"/>
+      </StackPanel>
+    </Grid>
+  </Border>
+</Window>
