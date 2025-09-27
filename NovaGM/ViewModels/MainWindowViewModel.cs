@@ -25,6 +25,11 @@ namespace NovaGM.ViewModels
         public string Title => "NovaGM";
         public string RoomCode => GameCoordinator.Instance.CurrentCode;
 
+        // Server properties
+        public string LocalIp { get; set; } = GetLocalIp() ?? "127.0.0.1";
+        public int Port { get; set; } = 5055;
+        public bool IsServerRunning { get; private set; }
+
         public ObservableCollection<Message> Messages { get; } = new();
         public string Input { get; set; } = string.Empty;
         public ICommand SendCommand { get; }
