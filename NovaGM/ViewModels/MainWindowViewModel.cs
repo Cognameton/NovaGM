@@ -20,7 +20,7 @@ using NovaGM.Views;                  // SettingsWindow, PacksWindow, ModelsWindo
 
 namespace NovaGM.ViewModels
 {
-    public sealed class MainWindowViewModel : INotifyPropertyChanged : INotifyPropertyChanged
+    public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         public string Title => "NovaGM";
         public string RoomCode => GameCoordinator.Instance.CurrentCode;
