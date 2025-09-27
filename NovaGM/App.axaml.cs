@@ -19,7 +19,7 @@ namespace NovaGM
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                // Initialize GameCoordinator but don't auto-start server 
+                // Start LAN server automatically (restore original functionality)
                 // (let user control it manually via UI)
                 var coord = GameCoordinator.Instance;
                 _server = null; // Will be created when user clicks Start Server
