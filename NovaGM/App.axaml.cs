@@ -19,7 +19,8 @@ namespace NovaGM
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                // Start LAN server (respect your settings if you have them; defaults: 5055 + LAN on)
+                // Initialize GameCoordinator but don't auto-start server 
+                // (let user control it manually via UI)
                 var coord = GameCoordinator.Instance;
                 _server = new LocalServer(coord);
                 var port = 5055;
