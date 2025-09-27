@@ -1,7 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -10,11 +9,10 @@ using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Controls.Primitives;
 using Avalonia.Threading;
 using NovaGM.Models;
 using NovaGM.Services;               // AgentOrchestrator, ShutdownUtil
-using NovaGM.Services.Streaming;     // LocalBroadcaster, LocalServer
+using NovaGM.Services.Streaming;     // LocalBroadcaster
 using NovaGM.Services.Multiplayer;   // GameCoordinator
 using NovaGM.Views;                  // SettingsWindow, PacksWindow, ModelsWindow (if present)
 
@@ -24,11 +22,6 @@ namespace NovaGM.ViewModels
     {
         public string Title => "NovaGM";
         public string RoomCode => GameCoordinator.Instance.CurrentCode;
-
-        // Server properties
-        public string LocalIp { get; set; } = GetLocalIp() ?? "127.0.0.1";
-        public int Port { get; set; } = 5055;
-        public bool IsServerRunning { get; private set; }
 
         public ObservableCollection<Message> Messages { get; } = new();
         public string Input { get; set; } = string.Empty;
@@ -53,14 +46,6 @@ namespace NovaGM.ViewModels
         public ICommand SaveAsMissionCommand { get; }
         public ICommand KickPlayerCommand { get; }
         public ICommand LoadScenarioCommand { get; }
-
-        // Server commands
-        public ICommand RegenerateRoomCommand { get; }
-        public ICommand CopyJoinLinkCommand { get; }
-        public ICommand StartServerCommand { get; }
-        public ICommand StopServerCommand { get; }
-
-        private LocalServer? _localServer; // Add this field to manage the server instance
 
         private readonly AgentOrchestrator _agent = new();
         private readonly SemaphoreSlim _turnLock = new(1, 1);
@@ -119,7 +104,7 @@ namespace NovaGM.ViewModels
                 return Task.CompletedTask;
             });
 
-            // Menu commands
+            // Menu commands - simplified versions without problematic dialogs
             NewGameCommand = new RelayCommand(_ =>
             {
                 Messages.Clear();
@@ -135,7 +120,7 @@ namespace NovaGM.ViewModels
 
             ExitCommand = new RelayCommand(_ =>
             {
-                // Close main window → triggers App cleanup (LocalServer.Dispose + ShutdownUtil.HardExit)
+                // Close main window → triggers App cleanup
                 if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life
                     && life.MainWindow is { } mw)
                 {
@@ -164,7 +149,7 @@ namespace NovaGM.ViewModels
 
             AboutCommand = new RelayCommand(_ =>
             {
-                Messages.Add(new Message("GM", "NovaGM — local-first GM assistant. Foreigner on the jukebox, Star Trek in our hearts."));
+                Messages.Add(new Message("GM", "NovaGM — local-first GM assistant."));
                 return Task.CompletedTask;
             });
 
@@ -176,185 +161,22 @@ namespace NovaGM.ViewModels
                 return Task.CompletedTask;
             });
 
-            SaveAsMissionCommand = new RelayCommand(async _ =>
+            // Placeholder for future functionality
+            SaveAsMissionCommand = new RelayCommand(_ =>
             {
-                // Open Save Mission dialog
-                try
-                {
-                    var saveWindow = new SaveMissionWindow(_agent.StateStore, Messages);
-                    var result = await saveWindow.ShowDialog<string?>(Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null);
-                    
-                    if (!string.IsNullOrEmpty(result))
-                    {
-                        var fileName = Path.GetFileNameWithoutExtension(result);
-                        Messages.Add(new Message("GM", $"Mission saved successfully as '{fileName}'. You can now load this scenario in future sessions."));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Messages.Add(new Message("GM", $"Failed to save mission: {ex.Message}"));
-                }
-            });
-
-            KickPlayerCommand = new RelayCommand(async _ =>
-            {
-                try
-                {
-                    // Get current players from coordinator
-                    var coordinator = GameCoordinator.Instance;
-                    // Since GameCoordinator doesn't expose player list directly, we'll show a simple input dialog
-                    
-                    var kickDialog = new Window
-                    {
-                        Title = "Kick Player",
-                        Width = 300,
-                        Height = 180,
-                        WindowStartupLocation = WindowStartupLocation.CenterOwner
-                    };
-
-                    var stackPanel = new StackPanel
-                    {
-                        Margin = new Avalonia.Thickness(20),
-                        Spacing = 10
-                    };
-
-                    stackPanel.Children.Add(new TextBlock { Text = "Enter player name to kick:" });
-                    
-                    var nameBox = new TextBox { Name = "PlayerNameBox", Watermark = "Player name..." };
-                    stackPanel.Children.Add(nameBox);
-
-                    var buttonPanel = new StackPanel
-                    {
-                        Orientation = Avalonia.Layout.Orientation.Horizontal,
-                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                        Spacing = 10
-                    };
-
-                    var cancelButton = new Button 
-                    { 
-                        Content = "Cancel",
-                        MinWidth = 60
-                    };
-                    cancelButton.Click += (s, args) => kickDialog.Close(null);
-
-                    var kickButton = new Button 
-                    { 
-                        Content = "Kick",
-                        MinWidth = 60
-                    };
-                    kickButton.Click += (s, args) => kickDialog.Close(nameBox.Text?.Trim());
-
-                    buttonPanel.Children.Add(cancelButton);
-                    buttonPanel.Children.Add(kickButton);
-                    stackPanel.Children.Add(buttonPanel);
-
-                    kickDialog.Content = stackPanel;
-
-                    var result = await kickDialog.ShowDialog<string?>(Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null);
-                    
-                    if (!string.IsNullOrWhiteSpace(result))
-                    {
-                        // For now, just announce the kick since we don't have a direct way to forcefully disconnect players
-                        Messages.Add(new Message("GM", $"Player '{result}' has been kicked from the session. They will be disconnected on their next action."));
-                        
-                        // Reset the room code to effectively kick all players
-                        coordinator.ResetRoom();
-                        Messages.Add(new Message("GM", $"Room code reset to {coordinator.CurrentCode}. Share the new code with remaining players."));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Messages.Add(new Message("GM", $"Failed to kick player: {ex.Message}"));
-                }
-            });
-
-            LoadScenarioCommand = new RelayCommand(async _ =>
-            {
-                try
-                {
-                    var loadWindow = new LoadScenarioWindow();
-                    var result = await loadWindow.ShowDialog<Mission?>(Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null);
-                    
-                    if (result != null)
-                    {
-                        await LoadMissionAsync(result);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Messages.Add(new Message("GM", $"Failed to load scenario: {ex.Message}"));
-                }
-            });
-
-            // Server commands
-            RegenerateRoomCommand = new RelayCommand(_ =>
-            {
-                GameCoordinator.Instance.ResetRoom();
-                OnPropertyChanged(nameof(RoomCode));
-                Messages.Add(new Message("GM", $"Room code regenerated: {RoomCode}"));
+                Messages.Add(new Message("GM", "Mission save feature will be implemented later."));
                 return Task.CompletedTask;
             });
 
-            CopyJoinLinkCommand = new RelayCommand(_ =>
+            KickPlayerCommand = new RelayCommand(_ =>
             {
-                var joinUrl = $"http://{LocalIp}:{Port}";
-                try
-                {
-                    // Try to copy to clipboard (this is a simplified version)
-                    Messages.Add(new Message("GM", $"Join URL: {joinUrl}"));
-                }
-                catch
-                {
-                    Messages.Add(new Message("GM", $"Join URL: {joinUrl} (copy manually)"));
-                }
+                Messages.Add(new Message("GM", "Player management feature will be implemented later."));
                 return Task.CompletedTask;
             });
 
-            StartServerCommand = new RelayCommand(_ =>
+            LoadScenarioCommand = new RelayCommand(_ =>
             {
-                try
-                {
-                    if (_localServer != null)
-                    {
-                        Messages.Add(new Message("GM", "Server is already running"));
-                        return Task.CompletedTask;
-                    }
-
-                    _localServer = new LocalServer(GameCoordinator.Instance);
-                    _localServer.Start(Port, true); // Port from UI, allowLan = true
-                    IsServerRunning = true;
-                    OnPropertyChanged(nameof(IsServerRunning));
-                    Messages.Add(new Message("GM", $"Server started on {LocalIp}:{Port}"));
-                }
-                catch (Exception ex)
-                {
-                    _localServer = null;
-                    Messages.Add(new Message("GM", $"Server start failed: {ex.Message}"));
-                }
-                return Task.CompletedTask;
-            });
-
-            StopServerCommand = new RelayCommand(_ =>
-            {
-                try
-                {
-                    if (_localServer != null)
-                    {
-                        _localServer.Dispose();
-                        _localServer = null;
-                        IsServerRunning = false;
-                        OnPropertyChanged(nameof(IsServerRunning));
-                        Messages.Add(new Message("GM", "Server stopped"));
-                    }
-                    else
-                    {
-                        Messages.Add(new Message("GM", "Server is not running"));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Messages.Add(new Message("GM", $"Server stop failed: {ex.Message}"));
-                }
+                Messages.Add(new Message("GM", "Scenario loading feature will be implemented later."));
                 return Task.CompletedTask;
             });
 
@@ -419,80 +241,6 @@ namespace NovaGM.ViewModels
                 m.Content.Length > 100 ? m.Content.Substring(0, 100) + "..." : m.Content));
             
             return summary.Length > 200 ? summary.Substring(0, 200) + "..." : summary;
-        }
-
-        private Task LoadMissionAsync(Mission mission)
-        {
-            try
-            {
-                // Clear current session
-                Messages.Clear();
-                
-                // Load mission state into the game
-                if (mission.InitialState != null)
-                {
-                    var state = _agent.StateStore.Load();
-                    
-                    // Apply mission initial state
-                    state.Location = mission.InitialState.Location;
-                    state.Premise = mission.InitialState.Premise;
-                    
-                    // Clear and reload collections
-                    state.Flags.Clear();
-                    foreach (var flag in mission.InitialState.Flags)
-                        state.Flags.Add(flag);
-                    
-                    state.Npcs.Clear();
-                    foreach (var npc in mission.InitialState.Npcs)
-                        state.Npcs[npc.Key] = npc.Value;
-                    
-                    state.Facts.Clear();
-                    foreach (var fact in mission.InitialState.Facts)
-                        state.Facts.Add(fact);
-                }
-                
-                // Add opening message
-                Messages.Add(new Message("GM", $"Loading mission: {mission.Name}"));
-                
-                if (!string.IsNullOrWhiteSpace(mission.Narrative?.OpeningText))
-                {
-                    Messages.Add(new Message("GM", mission.Narrative.OpeningText));
-                }
-                else if (!string.IsNullOrWhiteSpace(mission.Description))
-                {
-                    Messages.Add(new Message("GM", mission.Description));
-                }
-                
-                // Add objectives if available
-                if (mission.Narrative?.Objectives?.Any() == true)
-                {
-                    var objectiveText = "Mission Objectives:\n" + string.Join("\n", mission.Narrative.Objectives.Select(o => $"• {o}"));
-                    Messages.Add(new Message("GM", objectiveText));
-                }
-                
-                Messages.Add(new Message("GM", "Mission loaded successfully. What would you like to do?"));
-            }
-            catch (Exception ex)
-            {
-                Messages.Add(new Message("GM", $"Error loading mission: {ex.Message}"));
-            }
-            
-            return Task.CompletedTask;
-        }
-
-        private static string? GetLocalIp()
-        {
-            try
-            {
-                using var socket = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.InterNetwork, System.Net.Sockets.SocketType.Dgram, 0);
-                socket.Connect("8.8.8.8", 65530);
-                var endPoint = socket.LocalEndPoint as System.Net.IPEndPoint;
-                return endPoint?.Address?.ToString();
-            }
-            catch
-            {
-                return "127.0.0.1";
-            }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
