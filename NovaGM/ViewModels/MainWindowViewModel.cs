@@ -361,7 +361,7 @@ namespace NovaGM.ViewModels
             _ = Task.Run(async () =>
             {
                 await foreach (var inp in coordinator.ReadInputsAsync(CancellationToken.None))
-                    await HandleTurnAsync(inp.Name, inp.Text, broadcaster);
+                    await HandleTurnAsync(inp.Player, inp.Text, broadcaster);
             });
         }
 
