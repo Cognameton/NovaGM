@@ -392,7 +392,7 @@ document.getElementById('send').onclick = async () => {{
                                    }
                                });
 
-                               // POST /generate-character { type }
+                               // POST /generate-character { type } - placeholder
                                endpoints.MapPost("/generate-character", async ctx =>
                                {
                                    try
@@ -402,7 +402,7 @@ document.getElementById('send').onclick = async () => {{
                                        using var doc = JsonDocument.Parse(body);
                                        var type = doc.RootElement.GetProperty("type").GetString() ?? "random";
 
-                                       // Safe fallback if CharacterGenerator is not available
+                                       // Simple fallback character generation
                                        var response = new
                                        {
                                            name = "Generated Character",
@@ -413,37 +413,6 @@ document.getElementById('send').onclick = async () => {{
                                                str = 15, dex = 14, con = 13, @int = 12, wis = 10, cha = 8
                                            }
                                        };
-
-                                       try
-                                       {
-                                           GeneratedCharacter character = type.ToLowerInvariant() switch
-                                           {
-                                               "fighter" => CharacterGenerator.GenerateForClass("fighter"),
-                                               "rogue" => CharacterGenerator.GenerateForClass("rogue"),
-                                               "mage" => CharacterGenerator.GenerateForClass("mage"),
-                                               _ => CharacterGenerator.GenerateRandom()
-                                           };
-
-                                           response = new
-                                           {
-                                               name = character.Name,
-                                               race = character.Race,
-                                               @class = character.Class,
-                                               stats = new
-                                               {
-                                                   str = character.GetBaseStat("str"),
-                                                   dex = character.GetBaseStat("dex"),
-                                                   con = character.GetBaseStat("con"),
-                                                   @int = character.GetBaseStat("int"),
-                                                   wis = character.GetBaseStat("wis"),
-                                                   cha = character.GetBaseStat("cha")
-                                               }
-                                           };
-                                       }
-                                       catch
-                                       {
-                                           // Use fallback response if CharacterGenerator fails
-                                       }
 
                                        ctx.Response.ContentType = "application/json";
                                        await ctx.Response.WriteAsync(JsonSerializer.Serialize(response));
