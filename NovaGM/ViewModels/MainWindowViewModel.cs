@@ -317,7 +317,7 @@ namespace NovaGM.ViewModels
                     if (_localServer != null)
                     {
                         Messages.Add(new Message("GM", "Server is already running"));
-                        return;
+                        return Task.CompletedTask;
                     }
 
                     _localServer = new LocalServer(GameCoordinator.Instance);
