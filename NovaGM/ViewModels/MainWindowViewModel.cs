@@ -457,6 +457,8 @@ namespace NovaGM.ViewModels
             {
                 Messages.Add(new Message("GM", $"Error loading mission: {ex.Message}"));
             }
+            
+            return Task.CompletedTask;
         }
     }
 
