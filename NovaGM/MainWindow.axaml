@@ -41,51 +41,6 @@
       </MenuItem>
     </Menu>
 
-    <!-- Server Control Panel -->
-    <Border DockPanel.Dock="Top" 
-            Background="{DynamicResource Brush.SurfaceAlt}" 
-            Padding="10,8">
-      <Grid ColumnDefinitions="*,Auto">
-        
-        <!-- Left side: Room controls -->
-        <StackPanel Grid.Column="0" 
-                    Orientation="Horizontal" 
-                    Spacing="12"
-                    VerticalAlignment="Center">
-          <TextBlock Text="Room:" VerticalAlignment="Center" FontWeight="SemiBold"/>
-          <TextBlock Text="{Binding RoomCode}" 
-                     VerticalAlignment="Center" 
-                     FontFamily="Consolas" 
-                     FontWeight="Bold"
-                     FontSize="14"/>
-          <Button Content="Regenerate" Command="{Binding RegenerateRoomCommand}" MinWidth="80"/>
-          <Button Content="Copy Join Link" Command="{Binding CopyJoinLinkCommand}" MinWidth="100"/>
-        </StackPanel>
-
-        <!-- Right side: Server controls -->
-        <StackPanel Grid.Column="1" 
-                    Orientation="Horizontal" 
-                    Spacing="8"
-                    VerticalAlignment="Center">
-          <TextBlock Text="IP:" VerticalAlignment="Center"/>
-          <TextBox Text="{Binding LocalIp, Mode=TwoWay}" 
-                   Width="120" 
-                   VerticalAlignment="Center"/>
-          <TextBlock Text="Port:" VerticalAlignment="Center"/>
-          <TextBox Text="{Binding Port, Mode=TwoWay}" 
-                   Width="60" 
-                   VerticalAlignment="Center"/>
-          <Button Content="Start Server" 
-                  Command="{Binding StartServerCommand}" 
-                  MinWidth="80"/>
-          <Button Content="Stop" 
-                  Command="{Binding StopServerCommand}" 
-                  MinWidth="60"/>
-        </StackPanel>
-        
-      </Grid>
-    </Border>
-
     <!-- Main tabs -->
     <TabControl>
       <!-- Session tab -->
