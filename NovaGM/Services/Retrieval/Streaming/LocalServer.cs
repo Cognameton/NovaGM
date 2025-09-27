@@ -392,7 +392,7 @@ document.getElementById('send').onclick = async () => {{
                                    }
                                });
 
-                               // POST /generate-character { type } - placeholder
+                               // POST /generate-character { type }
                                endpoints.MapPost("/generate-character", async ctx =>
                                {
                                    try
@@ -402,15 +402,27 @@ document.getElementById('send').onclick = async () => {{
                                        using var doc = JsonDocument.Parse(body);
                                        var type = doc.RootElement.GetProperty("type").GetString() ?? "random";
 
-                                       // Simple fallback character generation
+                                       GeneratedCharacter character = type.ToLowerInvariant() switch
+                                       {
+                                           "fighter" => CharacterGenerator.GenerateForClass("fighter"),
+                                           "rogue" => CharacterGenerator.GenerateForClass("rogue"),
+                                           "mage" => CharacterGenerator.GenerateForClass("mage"),
+                                           _ => CharacterGenerator.GenerateRandom()
+                                       };
+
                                        var response = new
                                        {
-                                           name = "Generated Character",
-                                           race = "Human", 
-                                           @class = "Fighter",
+                                           name = character.Name,
+                                           race = character.Race,
+                                           @class = character.Class,
                                            stats = new
                                            {
-                                               str = 15, dex = 14, con = 13, @int = 12, wis = 10, cha = 8
+                                               str = character.GetBaseStat("str"),
+                                               dex = character.GetBaseStat("dex"),
+                                               con = character.GetBaseStat("con"),
+                                               @int = character.GetBaseStat("int"),
+                                               wis = character.GetBaseStat("wis"),
+                                               cha = character.GetBaseStat("cha")
                                            }
                                        };
 
