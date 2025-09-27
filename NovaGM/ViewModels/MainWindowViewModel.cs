@@ -54,11 +54,13 @@ namespace NovaGM.ViewModels
         public ICommand KickPlayerCommand { get; }
         public ICommand LoadScenarioCommand { get; }
 
-        // Server commands  
+        // Server commands
         public ICommand RegenerateRoomCommand { get; }
         public ICommand CopyJoinLinkCommand { get; }
         public ICommand StartServerCommand { get; }
         public ICommand StopServerCommand { get; }
+
+        private LocalServer? _localServer; // Add this field to manage the server instance
 
         private readonly AgentOrchestrator _agent = new();
         private readonly SemaphoreSlim _turnLock = new(1, 1);
