@@ -25,7 +25,7 @@ namespace NovaGM
                 _server = null; // Will be created when user clicks Start Server
 
 
-                _server.Start(port, allowLan);
+
 
                 var mw = new MainWindow
                 {
