@@ -23,7 +23,7 @@ namespace NovaGM
                 // (let user control it manually via UI)
                 var coord = GameCoordinator.Instance;
                 _server = null; // Will be created when user clicks Start Server
-                var port = 5055;
+
                 var allowLan = true;
                 _server.Start(port, allowLan);
 
