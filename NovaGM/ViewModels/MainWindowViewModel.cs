@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -104,7 +105,7 @@ namespace NovaGM.ViewModels
                 return Task.CompletedTask;
             });
 
-            // Menu commands - simplified versions without problematic dialogs
+            // Menu commands
             NewGameCommand = new RelayCommand(_ =>
             {
                 Messages.Clear();
@@ -149,7 +150,7 @@ namespace NovaGM.ViewModels
 
             AboutCommand = new RelayCommand(_ =>
             {
-                Messages.Add(new Message("GM", "NovaGM — local-first GM assistant."));
+                Messages.Add(new Message("GM", "NovaGM — local-first GM assistant. Foreigner on the jukebox, Star Trek in our hearts."));
                 return Task.CompletedTask;
             });
 
@@ -161,23 +162,50 @@ namespace NovaGM.ViewModels
                 return Task.CompletedTask;
             });
 
-            // Placeholder for future functionality
-            SaveAsMissionCommand = new RelayCommand(_ =>
+            SaveAsMissionCommand = new RelayCommand(async _ =>
             {
-                Messages.Add(new Message("GM", "Mission save feature will be implemented later."));
-                return Task.CompletedTask;
+                // Open Save Mission dialog
+                try
+                {
+                    var saveWindow = new SaveMissionWindow(_agent.StateStore, Messages);
+                    var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
+                    var result = await saveWindow.ShowDialog<string?>(ownerWindow);
+                    
+                    if (!string.IsNullOrEmpty(result))
+                    {
+                        var fileName = Path.GetFileNameWithoutExtension(result);
+                        Messages.Add(new Message("GM", $"Mission saved successfully as '{fileName}'. You can now load this scenario in future sessions."));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Messages.Add(new Message("GM", $"Failed to save mission: {ex.Message}"));
+                }
             });
 
             KickPlayerCommand = new RelayCommand(_ =>
             {
-                Messages.Add(new Message("GM", "Player management feature will be implemented later."));
+                Messages.Add(new Message("GM", "Player kick functionality available via room code regeneration."));
                 return Task.CompletedTask;
             });
 
-            LoadScenarioCommand = new RelayCommand(_ =>
+            LoadScenarioCommand = new RelayCommand(async _ =>
             {
-                Messages.Add(new Message("GM", "Scenario loading feature will be implemented later."));
-                return Task.CompletedTask;
+                try
+                {
+                    var loadWindow = new LoadScenarioWindow();
+                    var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
+                    var result = await loadWindow.ShowDialog<Mission?>(ownerWindow);
+                    
+                    if (result != null)
+                    {
+                        await LoadMissionAsync(result);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Messages.Add(new Message("GM", $"Failed to load scenario: {ex.Message}"));
+                }
             });
 
             // Consume LAN player inputs
@@ -241,6 +269,65 @@ namespace NovaGM.ViewModels
                 m.Content.Length > 100 ? m.Content.Substring(0, 100) + "..." : m.Content));
             
             return summary.Length > 200 ? summary.Substring(0, 200) + "..." : summary;
+        }
+
+        private Task LoadMissionAsync(Mission mission)
+        {
+            try
+            {
+                // Clear current session
+                Messages.Clear();
+                
+                // Load mission state into the game
+                if (mission.InitialState != null)
+                {
+                    var state = _agent.StateStore.Load();
+                    
+                    // Apply mission initial state
+                    state.Location = mission.InitialState.Location;
+                    state.Premise = mission.InitialState.Premise;
+                    
+                    // Clear and reload collections
+                    state.Flags.Clear();
+                    foreach (var flag in mission.InitialState.Flags)
+                        state.Flags.Add(flag);
+                    
+                    state.Npcs.Clear();
+                    foreach (var npc in mission.InitialState.Npcs)
+                        state.Npcs[npc.Key] = npc.Value;
+                    
+                    state.Facts.Clear();
+                    foreach (var fact in mission.InitialState.Facts)
+                        state.Facts.Add(fact);
+                }
+                
+                // Add opening message
+                Messages.Add(new Message("GM", $"Loading mission: {mission.Name}"));
+                
+                if (!string.IsNullOrWhiteSpace(mission.Narrative?.OpeningText))
+                {
+                    Messages.Add(new Message("GM", mission.Narrative.OpeningText));
+                }
+                else if (!string.IsNullOrWhiteSpace(mission.Description))
+                {
+                    Messages.Add(new Message("GM", mission.Description));
+                }
+                
+                // Add objectives if available
+                if (mission.Narrative?.Objectives?.Any() == true)
+                {
+                    var objectiveText = "Mission Objectives:\n" + string.Join("\n", mission.Narrative.Objectives.Select(o => $"• {o}"));
+                    Messages.Add(new Message("GM", objectiveText));
+                }
+                
+                Messages.Add(new Message("GM", "Mission loaded successfully. What would you like to do?"));
+            }
+            catch (Exception ex)
+            {
+                Messages.Add(new Message("GM", $"Error loading mission: {ex.Message}"));
+            }
+            
+            return Task.CompletedTask;
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
