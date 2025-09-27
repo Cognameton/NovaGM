@@ -22,7 +22,10 @@ namespace NovaGM
                 // Start LAN server automatically (restore original functionality)
 
                 var coord = GameCoordinator.Instance;
-                _server = null; // Will be created when user clicks Start Server
+                _server = new LocalServer(coord);
+                var port = 5055;
+                var allowLan = true;
+                _server.Start(port, allowLan);
 
 
 
