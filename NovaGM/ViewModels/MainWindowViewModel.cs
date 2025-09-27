@@ -14,7 +14,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Threading;
 using NovaGM.Models;
 using NovaGM.Services;               // AgentOrchestrator, ShutdownUtil
-using NovaGM.Services.Streaming;     // LocalBroadcaster
+using NovaGM.Services.Streaming;     // LocalBroadcaster, LocalServer
 using NovaGM.Services.Multiplayer;   // GameCoordinator
 using NovaGM.Views;                  // SettingsWindow, PacksWindow, ModelsWindow (if present)
 
