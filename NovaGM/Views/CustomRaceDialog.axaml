@@ -1,0 +1,105 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="NovaGM.Views.CustomRaceDialog"
+        Title="Add Custom Race"
+        Width="400" Height="450"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+  <Grid Margin="20">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- Title -->
+    <TextBlock Grid.Row="0" Text="Create Custom Race" 
+               FontSize="16" FontWeight="Bold" 
+               HorizontalAlignment="Center" 
+               Margin="0,0,0,20"/>
+
+    <!-- Basic Info -->
+    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto" Margin="0,0,0,20">
+      <StackPanel Grid.Row="0" Margin="0,0,0,10">
+        <TextBlock Text="Race Name:" FontWeight="SemiBold"/>
+        <TextBox x:Name="NameTextBox" Watermark="Enter race name..."/>
+      </StackPanel>
+
+      <StackPanel Grid.Row="1" Margin="0,0,0,10">
+        <TextBlock Text="Race ID:" FontWeight="SemiBold"/>
+        <TextBox x:Name="IdTextBox" Watermark="Enter unique ID (lowercase, no spaces)..."/>
+      </StackPanel>
+    </Grid>
+
+    <!-- Ability Modifiers -->
+    <Grid Grid.Row="2" Margin="0,0,0,15">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+      </Grid.RowDefinitions>
+      
+      <TextBlock Grid.Row="0" Text="Ability Score Modifiers:" FontWeight="SemiBold" Margin="0,0,0,10"/>
+      
+      <Grid Grid.Row="1" ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto">
+        <StackPanel Grid.Column="0" Grid.Row="0" Margin="0,0,10,5">
+          <TextBlock Text="STR:"/>
+          <NumericUpDown x:Name="StrModifier" Value="0" Minimum="-3" Maximum="3"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Grid.Row="0" Margin="0,0,10,5">
+          <TextBlock Text="DEX:"/>
+          <NumericUpDown x:Name="DexModifier" Value="0" Minimum="-3" Maximum="3"/>
+        </StackPanel>
+        <StackPanel Grid.Column="2" Grid.Row="0" Margin="0,0,0,5">
+          <TextBlock Text="CON:"/>
+          <NumericUpDown x:Name="ConModifier" Value="0" Minimum="-3" Maximum="3"/>
+        </StackPanel>
+        
+        <StackPanel Grid.Column="0" Grid.Row="1" Margin="0,0,10,0">
+          <TextBlock Text="INT:"/>
+          <NumericUpDown x:Name="IntModifier" Value="0" Minimum="-3" Maximum="3"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Grid.Row="1" Margin="0,0,10,0">
+          <TextBlock Text="WIS:"/>
+          <NumericUpDown x:Name="WisModifier" Value="0" Minimum="-3" Maximum="3"/>
+        </StackPanel>
+        <StackPanel Grid.Column="2" Grid.Row="1" Margin="0,0,0,0">
+          <TextBlock Text="CHA:"/>
+          <NumericUpDown x:Name="ChaModifier" Value="0" Minimum="-3" Maximum="3"/>
+        </StackPanel>
+      </Grid>
+    </Grid>
+
+    <!-- Traits -->
+    <StackPanel Grid.Row="3">
+      <TextBlock Text="Racial Traits:" FontWeight="SemiBold" Margin="0,0,0,10"/>
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBox Grid.Column="0" x:Name="TraitTextBox" Watermark="Enter trait name..."/>
+        <Button Grid.Column="1" x:Name="AddTraitButton" Content="Add" Margin="10,0,0,0"/>
+      </Grid>
+      <ListBox x:Name="TraitsList" MaxHeight="100" Margin="0,10,0,0">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center"/>
+              <Button Grid.Column="1" Content="×" Padding="5,0" FontSize="12" x:Name="RemoveTraitButton"/>
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </StackPanel>
+
+    <!-- Buttons -->
+    <StackPanel Grid.Row="4" 
+                Orientation="Horizontal" 
+                HorizontalAlignment="Right" 
+                Spacing="10"
+                Margin="0,20,0,0">
+      <Button x:Name="CancelButton" Content="Cancel" MinWidth="80"/>
+      <Button x:Name="CreateButton" Content="Create Race" MinWidth="80" Classes="accent"/>
+    </StackPanel>
+
+  </Grid>
+</Window>
