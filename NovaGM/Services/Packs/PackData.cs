@@ -44,6 +44,7 @@ namespace NovaGM.Services.Packs
         // e.g., { "ac": 2, "dmgMin":1, "dmgMax":6, "acc":1 }
         [JsonPropertyName("stats")]  public Dictionary<string, int> Stats { get; set; } = new();
         [JsonPropertyName("weight")] public double Weight { get; set; } = 0.0;
+        [JsonPropertyName("description")] public string? Description { get; set; }
     }
 
     // Rules/Formula document that StatCalculator uses
