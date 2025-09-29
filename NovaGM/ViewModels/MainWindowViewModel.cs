@@ -374,6 +374,56 @@ namespace NovaGM.ViewModels
             return Task.CompletedTask;
         }
 
+        private void UpdateCompendiumForGenre()
+        {
+            try
+            {
+                // Clear existing compendium entries
+                Compendium.Clear();
+                
+                // Get current genre content
+                var currentGenre = GenreManager.Current.CurrentGenre;
+                var genreContent = GenreManager.GetGenreContent(currentGenre);
+                
+                // Add races
+                foreach (var race in genreContent.Races)
+                {
+                    Compendium.Add(new CompendiumEntry 
+                    { 
+                        Category = "Race", 
+                        Name = race.Key, 
+                        Description = race.Value 
+                    });
+                }
+                
+                // Add classes
+                foreach (var characterClass in genreContent.Classes)
+                {
+                    Compendium.Add(new CompendiumEntry 
+                    { 
+                        Category = "Class", 
+                        Name = characterClass.Key, 
+                        Description = characterClass.Value 
+                    });
+                }
+                
+                // Add equipment
+                foreach (var equipment in genreContent.Equipment)
+                {
+                    Compendium.Add(new CompendiumEntry 
+                    { 
+                        Category = "Equipment", 
+                        Name = equipment.Key, 
+                        Description = equipment.Value 
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Messages.Add(new Message("GM", $"Failed to update compendium: {ex.Message}"));
+            }
+        }
+
         public event PropertyChangedEventHandler? PropertyChanged;
         private void OnPropertyChanged([CallerMemberName] string? name = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
