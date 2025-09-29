@@ -2,6 +2,8 @@ using System;
 using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
 using NovaGM.Services.Packs;
 
 namespace NovaGM.Views
