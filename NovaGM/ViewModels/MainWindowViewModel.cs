@@ -211,6 +211,35 @@ namespace NovaGM.ViewModels
                 }
             });
 
+            SelectGenreCommand = new RelayCommand(async _ =>
+            {
+                try
+                {
+                    if (GenreManager.Current.GameStarted)
+                    {
+                        Messages.Add(new Message("GM", "Cannot change genre after game has started. Start a new game to select a different genre."));
+                        return;
+                    }
+
+                    var genreWindow = new GenreSelectionWindow();
+                    var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
+                    var result = await genreWindow.ShowDialog<GameGenre?>(ownerWindow);
+                    
+                    if (result.HasValue)
+                    {
+                        var genreName = GenreManager.GetGenreDisplayName(result.Value);
+                        Messages.Add(new Message("GM", $"Genre set to {genreName}. The available races, classes, and equipment have been updated accordingly."));
+                        
+                        // Update compendium with new genre content
+                        UpdateCompendiumForGenre();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Messages.Add(new Message("GM", $"Failed to change genre: {ex.Message}"));
+                }
+            });
+
             // Consume LAN player inputs and track connected players
             _ = Task.Run(async () =>
             {
