@@ -27,9 +27,9 @@ namespace NovaGM.Views
 
         private void SetupEventHandlers()
         {
-            FantasyRadio.Checked += (s, e) => OnGenreChanged(GameGenre.Fantasy);
-            SciFiRadio.Checked += (s, e) => OnGenreChanged(GameGenre.SciFi);
-            HorrorRadio.Checked += (s, e) => OnGenreChanged(GameGenre.Horror);
+            FantasyRadio.IsCheckedChanged += (s, e) => { if (FantasyRadio.IsChecked == true) OnGenreChanged(GameGenre.Fantasy); };
+            SciFiRadio.IsCheckedChanged += (s, e) => { if (SciFiRadio.IsChecked == true) OnGenreChanged(GameGenre.SciFi); };
+            HorrorRadio.IsCheckedChanged += (s, e) => { if (HorrorRadio.IsChecked == true) OnGenreChanged(GameGenre.Horror); };
 
             AddRaceButton.Click += OnAddRaceClick;
             AddClassButton.Click += OnAddClassClick;
