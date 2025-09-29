@@ -179,7 +179,7 @@ namespace NovaGM.ViewModels
                 {
                     var saveWindow = new SaveMissionWindow(_agent.StateStore, Messages);
                     var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
-                    var result = await saveWindow.ShowDialog<string?>(ownerWindow);
+                    var result = ownerWindow != null ? await saveWindow.ShowDialog<string?>(ownerWindow) : await saveWindow.ShowDialog<string?>();
                     
                     if (!string.IsNullOrEmpty(result))
                     {
