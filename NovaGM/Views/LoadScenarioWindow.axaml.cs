@@ -27,7 +27,46 @@ namespace NovaGM.Views
                 _missions.AddRange(MissionService.ListAvailableMissions());
 
                 var missionsList = this.FindControl<ListBox>("MissionsList")!;
-                missionsList.ItemsSource = _missions;
+                
+                // Manually create the items to avoid XAML binding issues
+                missionsList.Items.Clear();
+                foreach (var mission in _missions)
+                {
+                    var stackPanel = new StackPanel 
+                    { 
+                        Margin = new Avalonia.Thickness(4), 
+                        Spacing = 2 
+                    };
+                    
+                    stackPanel.Children.Add(new TextBlock 
+                    { 
+                        Text = mission.Name, 
+                        FontWeight = Avalonia.Media.FontWeight.SemiBold 
+                    });
+                    
+                    stackPanel.Children.Add(new TextBlock 
+                    { 
+                        Text = mission.Genre, 
+                        FontSize = 11, 
+                        Opacity = 0.7 
+                    });
+                    
+                    stackPanel.Children.Add(new TextBlock 
+                    { 
+                        Text = mission.Description, 
+                        FontSize = 11, 
+                        TextWrapping = Avalonia.Media.TextWrapping.Wrap, 
+                        Opacity = 0.8 
+                    });
+                    
+                    var listItem = new ListBoxItem 
+                    { 
+                        Content = stackPanel, 
+                        Tag = mission 
+                    };
+                    
+                    missionsList.Items.Add(listItem);
+                }
 
                 if (!_missions.Any())
                 {
