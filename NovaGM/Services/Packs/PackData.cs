@@ -23,6 +23,8 @@ namespace NovaGM.Services.Packs
         // Index: level-1 → proficiency bonus
         [JsonPropertyName("proficiencyBonusByLevel")]
         public int[] ProficiencyBonusByLevel { get; set; } = new[] { 2 };
+        
+        [JsonPropertyName("description")] public string? Description { get; set; }
     }
 
     public sealed class SkillDef
