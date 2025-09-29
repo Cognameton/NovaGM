@@ -293,7 +293,7 @@ namespace NovaGM.Services
             return hooks.Take(5).ToList();
         }
 
-        private static List<Encounter> ExtractEncounters(List<Message> messages)
+        private static List<Encounter> ExtractEncounters(List<NovaGM.ViewModels.Message> messages)
         {
             var encounters = new List<Encounter>();
             
