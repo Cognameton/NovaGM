@@ -23,8 +23,10 @@ namespace NovaGM.ViewModels
     {
         public string Title => "NovaGM";
         public string RoomCode => GameCoordinator.Instance.CurrentCode;
+        public string ServerUrl => $"http://{GetLocalIp()}:5055";
 
         public ObservableCollection<Message> Messages { get; } = new();
+        public ObservableCollection<string> ConnectedPlayers { get; } = new();
         public string Input { get; set; } = string.Empty;
         public ICommand SendCommand { get; }
 
