@@ -41,6 +41,56 @@
       </MenuItem>
     </Menu>
 
+    <!-- Server Status Panel -->
+    <Border DockPanel.Dock="Top" 
+            Background="{DynamicResource Brush.SurfaceAlt}" 
+            Padding="10,8">
+      <Grid ColumnDefinitions="*,Auto,200">
+        
+        <!-- Server Info -->
+        <StackPanel Grid.Column="0" 
+                    Orientation="Horizontal" 
+                    Spacing="12"
+                    VerticalAlignment="Center">
+          <TextBlock Text="Room:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+          <TextBlock Text="{Binding RoomCode}" 
+                     VerticalAlignment="Center" 
+                     FontFamily="Consolas" 
+                     FontWeight="Bold"
+                     FontSize="14"/>
+          <TextBlock Text="Players join at:" VerticalAlignment="Center"/>
+          <TextBlock Text="{Binding ServerUrl}" 
+                     VerticalAlignment="Center" 
+                     FontFamily="Consolas"
+                     FontSize="12"/>
+        </StackPanel>
+
+        <!-- Connected Players -->
+        <StackPanel Grid.Column="2" 
+                    VerticalAlignment="Center">
+          <TextBlock Text="Connected Players:" FontWeight="SemiBold" FontSize="12"/>
+          <ItemsControl ItemsSource="{Binding ConnectedPlayers}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel Orientation="Horizontal"/>
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Background="{DynamicResource Brush.Surface}"
+                        CornerRadius="4"
+                        Padding="6,2"
+                        Margin="2">
+                  <TextBlock Text="{Binding}" FontSize="11"/>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+        
+      </Grid>
+    </Border>
+
     <!-- Main tabs -->
     <TabControl>
       <!-- Session tab -->
