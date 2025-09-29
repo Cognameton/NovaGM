@@ -114,7 +114,7 @@
     <TextBlock Grid.Row="3" Text="Custom Content Added:" FontWeight="SemiBold" Margin="0,20,0,5"/>
     <ListBox Grid.Row="4" x:Name="CustomContentList" MaxHeight="80" Margin="0,0,0,20">
       <ListBox.ItemTemplate>
-        <DataTemplate>
+        <DataTemplate x:DataType="views:CustomContentItem">
           <StackPanel Orientation="Horizontal">
             <TextBlock Text="{Binding Type}" FontWeight="SemiBold" MinWidth="60"/>
             <TextBlock Text=": "/>
