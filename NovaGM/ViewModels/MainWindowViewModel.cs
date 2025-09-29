@@ -179,7 +179,14 @@ namespace NovaGM.ViewModels
                 {
                     var saveWindow = new SaveMissionWindow(_agent.StateStore, Messages);
                     var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
-                    var result = ownerWindow != null ? await saveWindow.ShowDialog<string?>(ownerWindow) : await saveWindow.ShowDialog<string?>();
+                    // ShowDialog requires an owner, so we'll provide a fallback
+                    if (ownerWindow == null)
+                    {
+                        // Create a temporary invisible window as owner if needed
+                        ownerWindow = new Window { Width = 1, Height = 1, WindowStartupLocation = WindowStartupLocation.CenterScreen };
+                        ownerWindow.Show();
+                    }
+                    var result = await saveWindow.ShowDialog<string?>(ownerWindow);
                     
                     if (!string.IsNullOrEmpty(result))
                     {
