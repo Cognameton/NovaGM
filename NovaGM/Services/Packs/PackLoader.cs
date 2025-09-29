@@ -132,8 +132,8 @@ namespace NovaGM.Services.Packs
             public const string Questionnaire = @"{
   ""questions"": [
     { ""id"": ""name"", ""prompt"": ""Character name"", ""type"": ""text"" },
-    { ""id"": ""race"", ""prompt"": ""Choose a race"", ""type"": ""select"", ""options"": [""human"",""elf"",""dwarf""] },
-    { ""id"": ""class"", ""prompt"": ""Choose a class"", ""type"": ""select"", ""options"": [""fighter"",""rogue"",""mage""] },
+    { ""id"": ""race"", ""prompt"": ""Choose a race"", ""type"": ""select"", ""options"": [""human"",""elf"",""dwarf"",""android"",""cyborg"",""alien""] },
+    { ""id"": ""class"", ""prompt"": ""Choose a class"", ""type"": ""select"", ""options"": [""fighter"",""rogue"",""mage"",""pilot"",""engineer"",""scientist""] },
     { ""id"": ""str"", ""prompt"": ""Strength"", ""type"": ""slider"", ""min"": 8, ""max"": 18, ""default"": 15 },
     { ""id"": ""dex"", ""prompt"": ""Dexterity"", ""type"": ""slider"", ""min"": 8, ""max"": 18, ""default"": 14 },
     { ""id"": ""con"", ""prompt"": ""Constitution"", ""type"": ""slider"", ""min"": 8, ""max"": 18, ""default"": 14 },
