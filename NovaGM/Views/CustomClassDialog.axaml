@@ -1,0 +1,69 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="NovaGM.Views.CustomClassDialog"
+        Title="Add Custom Class"
+        Width="400" Height="350"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+  <Grid Margin="20">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- Title -->
+    <TextBlock Grid.Row="0" Text="Create Custom Class" 
+               FontSize="16" FontWeight="Bold" 
+               HorizontalAlignment="Center" 
+               Margin="0,0,0,20"/>
+
+    <!-- Basic Info -->
+    <Grid Grid.Row="1" RowDefinitions="Auto,Auto" Margin="0,0,0,20">
+      <StackPanel Grid.Row="0" Margin="0,0,0,10">
+        <TextBlock Text="Class Name:" FontWeight="SemiBold"/>
+        <TextBox x:Name="NameTextBox" Watermark="Enter class name..."/>
+      </StackPanel>
+
+      <StackPanel Grid.Row="1" Margin="0,0,0,10">
+        <TextBlock Text="Class ID:" FontWeight="SemiBold"/>
+        <TextBox x:Name="IdTextBox" Watermark="Enter unique ID (lowercase, no spaces)..."/>
+      </StackPanel>
+    </Grid>
+
+    <!-- Hit Die -->
+    <StackPanel Grid.Row="2" Margin="0,0,0,20">
+      <TextBlock Text="Hit Die:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+      <ComboBox x:Name="HitDieComboBox" SelectedIndex="1">
+        <ComboBoxItem Content="d6 (6)"/>
+        <ComboBoxItem Content="d8 (8)"/>
+        <ComboBoxItem Content="d10 (10)"/>
+        <ComboBoxItem Content="d12 (12)"/>
+      </ComboBox>
+    </StackPanel>
+
+    <!-- Description -->
+    <StackPanel Grid.Row="3">
+      <TextBlock Text="Class Description (optional):" FontWeight="SemiBold" Margin="0,0,0,5"/>
+      <TextBox x:Name="DescriptionTextBox" 
+               AcceptsReturn="True" 
+               TextWrapping="Wrap" 
+               Height="80"
+               Watermark="Enter class description..."/>
+    </StackPanel>
+
+    <!-- Buttons -->
+    <StackPanel Grid.Row="4" 
+                Orientation="Horizontal" 
+                HorizontalAlignment="Right" 
+                Spacing="10"
+                Margin="0,20,0,0">
+      <Button x:Name="CancelButton" Content="Cancel" MinWidth="80"/>
+      <Button x:Name="CreateButton" Content="Create Class" MinWidth="80" Classes="accent"/>
+    </StackPanel>
+
+  </Grid>
+</Window>
