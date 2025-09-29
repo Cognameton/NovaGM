@@ -89,7 +89,7 @@
           <Expander Header="Available Skills" IsExpanded="False" Margin="0,5">
             <ListBox x:Name="SkillsPreview" MaxHeight="100">
               <ListBox.ItemTemplate>
-                <DataTemplate>
+                <DataTemplate x:DataType="views:PreviewItem">
                   <TextBlock Text="{Binding Name}"/>
                 </DataTemplate>
               </ListBox.ItemTemplate>
@@ -100,7 +100,7 @@
           <Expander Header="Available Weapons" IsExpanded="False" Margin="0,5">
             <ListBox x:Name="WeaponsPreview" MaxHeight="100">
               <ListBox.ItemTemplate>
-                <DataTemplate>
+                <DataTemplate x:DataType="views:PreviewItem">
                   <TextBlock Text="{Binding Name}"/>
                 </DataTemplate>
               </ListBox.ItemTemplate>
