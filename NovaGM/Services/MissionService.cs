@@ -27,7 +27,7 @@ namespace NovaGM.Services
         /// </summary>
         public static string SaveCurrentSessionAsMission(
             IStateStore stateStore,
-            IEnumerable<Message> messages,
+            IEnumerable<NovaGM.ViewModels.Message> messages,
             string missionName,
             string description = "",
             string genre = "fantasy",
