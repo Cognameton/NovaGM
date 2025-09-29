@@ -220,7 +220,7 @@ namespace NovaGM.Services
             return narrative;
         }
 
-        private static List<string> ExtractObjectivesFromMessages(List<Message> playerMessages)
+        private static List<string> ExtractObjectivesFromMessages(List<NovaGM.ViewModels.Message> playerMessages)
         {
             var objectives = new List<string>();
             
