@@ -286,6 +286,12 @@ namespace NovaGM.ViewModels
             await _turnLock.WaitAsync();
             try
             {
+                // Start the game if this is the first turn
+                if (!GenreManager.Current.GameStarted)
+                {
+                    GenreManager.StartGame();
+                }
+
                 Dispatcher.UIThread.Post(() => Messages.Add(new Message(playerName, text)));
 
                 var gm = new Message("GM", "");
