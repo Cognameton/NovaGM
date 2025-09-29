@@ -1,8 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:NovaGM.Views"
         x:Class="NovaGM.Views.SaveMissionWindow"
-        x:DataType="vm:SaveMissionWindow"
         Width="500" Height="420"
         CanResize="False"
         Title="Save as Mission — NovaGM">
