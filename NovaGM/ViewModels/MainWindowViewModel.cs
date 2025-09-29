@@ -111,8 +111,15 @@ namespace NovaGM.ViewModels
             // Menu commands
             NewGameCommand = new RelayCommand(_ =>
             {
+                // Reset genre manager for new game
+                GenreManager.ResetForNewGame();
+                
                 Messages.Clear();
-                Messages.Add(new Message("GM", "New game started. Set the scene or type an action to begin."));
+                Messages.Add(new Message("GM", "New game started. Select a genre from the Genre menu, then set the scene or type an action to begin."));
+                
+                // Update compendium with default content
+                UpdateCompendiumForGenre();
+                
                 return Task.CompletedTask;
             });
 
