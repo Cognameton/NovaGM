@@ -96,7 +96,10 @@ namespace NovaGM.Services.Packs
             public const string Races = @"{
   ""human"": { ""id"": ""human"", ""name"": ""Human"", ""mods"": {""str"":0,""dex"":0,""con"":0,""int"":0,""wis"":0,""cha"":0}, ""traits"": [""Versatile""] },
   ""elf"":   { ""id"": ""elf"",   ""name"": ""Elf"",   ""mods"": {""str"":0,""dex"":2,""con"":-1,""int"":1,""wis"":0,""cha"":0}, ""traits"": [""Keen Senses""] },
-  ""dwarf"": { ""id"": ""dwarf"", ""name"": ""Dwarf"", ""mods"": {""str"":1,""dex"":0,""con"":2,""int"":0,""wis"":0,""cha"":-1}, ""traits"": [""Stout""] }
+  ""dwarf"": { ""id"": ""dwarf"", ""name"": ""Dwarf"", ""mods"": {""str"":1,""dex"":0,""con"":2,""int"":0,""wis"":0,""cha"":-1}, ""traits"": [""Stout""] },
+  ""android"": { ""id"": ""android"", ""name"": ""Android"", ""mods"": {""str"":1,""dex"":1,""con"":2,""int"":1,""wis"":0,""cha"":-1}, ""traits"": [""Synthetic"", ""No Sleep""] },
+  ""cyborg"": { ""id"": ""cyborg"", ""name"": ""Cyborg"", ""mods"": {""str"":2,""dex"":0,""con"":1,""int"":1,""wis"":0,""cha"":-1}, ""traits"": [""Enhanced"", ""Tech Interface""] },
+  ""alien"": { ""id"": ""alien"", ""name"": ""Alien"", ""mods"": {""str"":0,""dex"":1,""con"":0,""int"":2,""wis"":1,""cha"":0}, ""traits"": [""Telepathic"", ""Adaptable""] }
 }";
             public const string Classes = @"{
   ""fighter"": { ""id"": ""fighter"", ""name"": ""Fighter"", ""hitDie"": 10, ""proficiencyBonusByLevel"": [2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6] },
