@@ -244,7 +244,14 @@ namespace NovaGM.ViewModels
 
                     var genreWindow = new GenreSelectionWindow();
                     var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
-                    var result = ownerWindow != null ? await genreWindow.ShowDialog<GameGenre?>(ownerWindow) : await genreWindow.ShowDialog<GameGenre?>();
+                    // ShowDialog requires an owner, so we'll provide a fallback
+                    if (ownerWindow == null)
+                    {
+                        // Create a temporary invisible window as owner if needed
+                        ownerWindow = new Window { Width = 1, Height = 1, WindowStartupLocation = WindowStartupLocation.CenterScreen };
+                        ownerWindow.Show();
+                    }
+                    var result = await genreWindow.ShowDialog<GameGenre?>(ownerWindow);
                     
                     if (result.HasValue)
                     {
