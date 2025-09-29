@@ -74,12 +74,12 @@ namespace NovaGM.Views
                 Name = name,
                 Mods = new Dictionary<string, int>
                 {
-                    ["str"] = (int)StrModifier.Value,
-                    ["dex"] = (int)DexModifier.Value,
-                    ["con"] = (int)ConModifier.Value,
-                    ["int"] = (int)IntModifier.Value,
-                    ["wis"] = (int)WisModifier.Value,
-                    ["cha"] = (int)ChaModifier.Value
+                    ["str"] = (int)(StrModifier.Value ?? 0),
+                    ["dex"] = (int)(DexModifier.Value ?? 0),
+                    ["con"] = (int)(ConModifier.Value ?? 0),
+                    ["int"] = (int)(IntModifier.Value ?? 0),
+                    ["wis"] = (int)(WisModifier.Value ?? 0),
+                    ["cha"] = (int)(ChaModifier.Value ?? 0)
                 },
                 Traits = _traits.ToArray()
             };
