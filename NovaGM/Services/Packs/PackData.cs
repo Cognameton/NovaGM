@@ -11,6 +11,7 @@ namespace NovaGM.Services.Packs
         [JsonPropertyName("name")]   public string Name { get; set; } = "";
         [JsonPropertyName("mods")]   public Dictionary<string, int> Mods { get; set; } = new(); // e.g., { "str": 2, "dex": 0 }
         [JsonPropertyName("traits")] public string[] Traits { get; set; } = System.Array.Empty<string>();
+        [JsonPropertyName("description")] public string? Description { get; set; }
     }
 
     public sealed class ClassDef
