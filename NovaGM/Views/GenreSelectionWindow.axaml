@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:NovaGM.Views"
         x:Class="NovaGM.Views.GenreSelectionWindow"
         Title="Select Game Genre"
         Width="600" Height="500"
