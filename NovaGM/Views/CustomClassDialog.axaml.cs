@@ -81,13 +81,33 @@ namespace NovaGM.Views
 
         private async void ShowError(string message)
         {
-            var dialog = new ContentDialog
+            // Simple error handling - could be enhanced with a proper dialog
+            var window = new Window
             {
                 Title = "Error",
-                Content = message,
-                PrimaryButtonText = "OK"
+                Width = 300,
+                Height = 150,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Content = new StackPanel
+                {
+                    Margin = new Avalonia.Thickness(20),
+                    Children =
+                    {
+                        new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                        new Button 
+                        { 
+                            Content = "OK", 
+                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                            Margin = new Avalonia.Thickness(0, 20, 0, 0)
+                        }
+                    }
+                }
             };
-            await dialog.ShowAsync();
+            
+            var okButton = ((StackPanel)window.Content).Children.OfType<Button>().First();
+            okButton.Click += (s, e) => window.Close();
+            
+            await window.ShowDialog(this);
         }
     }
 }
