@@ -139,6 +139,9 @@ namespace NovaGM.Services
                 "wizard" => new[] { "int", "wis", "dex" },
                 "ranger" => new[] { "dex", "wis", "con" },
                 "cleric" => new[] { "wis", "con", "str" },
+                "pilot" => new[] { "dex", "int", "con" },
+                "engineer" => new[] { "int", "dex", "con" },
+                "scientist" => new[] { "int", "wis", "dex" },
                 _ => new[] { "str", "dex", "con" } // default
             };
         }
