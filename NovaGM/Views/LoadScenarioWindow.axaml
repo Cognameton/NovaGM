@@ -2,7 +2,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="using:NovaGM.Models"
         x:Class="NovaGM.Views.LoadScenarioWindow"
-        x:DataType="NovaGM.Views.LoadScenarioWindow"
         Width="600" Height="450"
         CanResize="True"
         Title="Load Scenario — NovaGM">
