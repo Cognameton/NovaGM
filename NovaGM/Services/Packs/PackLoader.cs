@@ -104,7 +104,10 @@ namespace NovaGM.Services.Packs
             public const string Classes = @"{
   ""fighter"": { ""id"": ""fighter"", ""name"": ""Fighter"", ""hitDie"": 10, ""proficiencyBonusByLevel"": [2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6] },
   ""rogue"":   { ""id"": ""rogue"",   ""name"": ""Rogue"",   ""hitDie"": 8,  ""proficiencyBonusByLevel"": [2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6] },
-  ""mage"":    { ""id"": ""mage"",    ""name"": ""Mage"",    ""hitDie"": 6,  ""proficiencyBonusByLevel"": [2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6] }
+  ""mage"":    { ""id"": ""mage"",    ""name"": ""Mage"",    ""hitDie"": 6,  ""proficiencyBonusByLevel"": [2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6] },
+  ""pilot"": { ""id"": ""pilot"", ""name"": ""Pilot"", ""hitDie"": 8, ""proficiencyBonusByLevel"": [2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6] },
+  ""engineer"": { ""id"": ""engineer"", ""name"": ""Engineer"", ""hitDie"": 8, ""proficiencyBonusByLevel"": [2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6] },
+  ""scientist"": { ""id"": ""scientist"", ""name"": ""Scientist"", ""hitDie"": 6, ""proficiencyBonusByLevel"": [2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6] }
 }";
             public const string Skills = @"{
   ""athletics"": { ""id"": ""athletics"", ""name"": ""Athletics"", ""attr"": ""str"" },
