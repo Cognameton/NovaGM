@@ -1,0 +1,136 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="NovaGM.Views.GenreSelectionWindow"
+        Title="Select Game Genre"
+        Width="600" Height="500"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+  <Grid Margin="20">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- Title -->
+    <TextBlock Grid.Row="0" Text="Choose Game Genre" 
+               FontSize="18" FontWeight="Bold" 
+               HorizontalAlignment="Center" 
+               Margin="0,0,0,20"/>
+
+    <!-- Warning Message -->
+    <Border Grid.Row="1" 
+            Background="Orange" 
+            CornerRadius="5" 
+            Padding="10" 
+            Margin="0,0,0,20">
+      <TextBlock Text="⚠️ Warning: Genre and custom content cannot be modified once the game starts!" 
+                 FontWeight="SemiBold" 
+                 TextWrapping="Wrap" 
+                 Foreground="White"/>
+    </Border>
+
+    <!-- Genre Selection and Preview -->
+    <Grid Grid.Row="2" ColumnDefinitions="200,*">
+      
+      <!-- Genre Selection -->
+      <StackPanel Grid.Column="0" Margin="0,0,20,0">
+        <TextBlock Text="Genre:" FontWeight="SemiBold" Margin="0,0,0,10"/>
+        <RadioButton x:Name="FantasyRadio" Content="Fantasy" IsChecked="True" GroupName="Genre" Margin="0,5"/>
+        <RadioButton x:Name="SciFiRadio" Content="Sci-Fi" GroupName="Genre" Margin="0,5"/>
+        <RadioButton x:Name="HorrorRadio" Content="Horror" GroupName="Genre" Margin="0,5"/>
+        
+        <Separator Margin="0,20"/>
+        
+        <TextBlock Text="Custom Content:" FontWeight="SemiBold" Margin="0,0,0,10"/>
+        <Button x:Name="AddRaceButton" Content="Add Custom Race" Margin="0,5" HorizontalAlignment="Stretch"/>
+        <Button x:Name="AddClassButton" Content="Add Custom Class" Margin="0,5" HorizontalAlignment="Stretch"/>
+      </StackPanel>
+
+      <!-- Preview Panel -->
+      <ScrollViewer Grid.Column="1">
+        <StackPanel>
+          <TextBlock Text="Preview:" FontWeight="SemiBold" Margin="0,0,0,10"/>
+          
+          <!-- Races Preview -->
+          <Expander Header="Available Races" IsExpanded="True" Margin="0,5">
+            <ListBox x:Name="RacesPreview" MaxHeight="120">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel>
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding Description}" FontSize="10" Foreground="Gray"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Expander>
+
+          <!-- Classes Preview -->
+          <Expander Header="Available Classes" IsExpanded="True" Margin="0,5">
+            <ListBox x:Name="ClassesPreview" MaxHeight="120">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel>
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding Description}" FontSize="10" Foreground="Gray"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Expander>
+
+          <!-- Skills Preview -->
+          <Expander Header="Available Skills" IsExpanded="False" Margin="0,5">
+            <ListBox x:Name="SkillsPreview" MaxHeight="100">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Name}"/>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Expander>
+
+          <!-- Weapons Preview -->
+          <Expander Header="Available Weapons" IsExpanded="False" Margin="0,5">
+            <ListBox x:Name="WeaponsPreview" MaxHeight="100">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Name}"/>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Expander>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+
+    <!-- Custom Content List -->
+    <TextBlock Grid.Row="3" Text="Custom Content Added:" FontWeight="SemiBold" Margin="0,20,0,5"/>
+    <ListBox Grid.Row="4" x:Name="CustomContentList" MaxHeight="80" Margin="0,0,0,20">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="{Binding Type}" FontWeight="SemiBold" MinWidth="60"/>
+            <TextBlock Text=": "/>
+            <TextBlock Text="{Binding Name}"/>
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <!-- Buttons -->
+    <StackPanel Grid.Row="5" 
+                Orientation="Horizontal" 
+                HorizontalAlignment="Right" 
+                Spacing="10">
+      <Button x:Name="CancelButton" Content="Cancel" MinWidth="80"/>
+      <Button x:Name="OkButton" Content="Apply Genre" MinWidth="80" Classes="accent"/>
+    </StackPanel>
+
+  </Grid>
+</Window>
