@@ -16,6 +16,13 @@ namespace NovaGM.Services.Packs
         {
             lock (_lock)
             {
+                // First check if we have genre-specific data
+                if (GenreManager.Current.Genre != GameGenre.Custom || GenreManager.Current.CustomRaces.Count > 0 || GenreManager.Current.CustomClasses.Count > 0)
+                {
+                    _data = GenreManager.GetCurrentGenreData();
+                    return;
+                }
+
                 var baseDir = AppContext.BaseDirectory;
                 var packsDir = Path.Combine(baseDir, "packs");
                 Directory.CreateDirectory(packsDir);
