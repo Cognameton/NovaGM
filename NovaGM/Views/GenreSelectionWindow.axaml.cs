@@ -120,7 +120,7 @@ namespace NovaGM.Views
 
                 Close(_selectedGenre);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Show error dialog if needed
                 Close(null);
