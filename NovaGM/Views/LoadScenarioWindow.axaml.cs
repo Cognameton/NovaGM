@@ -82,7 +82,8 @@ namespace NovaGM.Views
         private void MissionsList_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
             var listBox = sender as ListBox;
-            _selectedMission = listBox?.SelectedItem as Mission;
+            var selectedItem = listBox?.SelectedItem as ListBoxItem;
+            _selectedMission = selectedItem?.Tag as Mission;
 
             UpdateMissionDetails();
             UpdateButtonStates();
