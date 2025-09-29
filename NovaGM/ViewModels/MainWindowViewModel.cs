@@ -212,7 +212,14 @@ namespace NovaGM.ViewModels
                 {
                     var loadWindow = new LoadScenarioWindow();
                     var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
-                    var result = ownerWindow != null ? await loadWindow.ShowDialog<Mission?>(ownerWindow) : await loadWindow.ShowDialog<Mission?>();
+                    // ShowDialog requires an owner, so we'll provide a fallback
+                    if (ownerWindow == null)
+                    {
+                        // Create a temporary invisible window as owner if needed
+                        ownerWindow = new Window { Width = 1, Height = 1, WindowStartupLocation = WindowStartupLocation.CenterScreen };
+                        ownerWindow.Show();
+                    }
+                    var result = await loadWindow.ShowDialog<Mission?>(ownerWindow);
                     
                     if (result != null)
                     {
