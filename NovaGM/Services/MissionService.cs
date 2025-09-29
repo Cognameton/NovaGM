@@ -186,7 +186,7 @@ namespace NovaGM.Services
             return $"{safeName}-{timestamp}";
         }
 
-        private static MissionNarrative ExtractNarrative(List<Message> messages)
+        private static MissionNarrative ExtractNarrative(List<NovaGM.ViewModels.Message> messages)
         {
             var gmMessages = messages.Where(m => m.Role == "GM").ToList();
             var playerMessages = messages.Where(m => m.Role != "GM").ToList();
