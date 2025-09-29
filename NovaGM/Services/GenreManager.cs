@@ -29,6 +29,11 @@ namespace NovaGM.Services
         public static event Action<GameGenre>? GenreChanged;
         public static event Action? ContentChanged;
 
+        static GenreManager()
+        {
+            ContentChanged += PackLoader.RefreshData;
+        }
+
         public static GenreConfig Current
         {
             get { lock (_lock) return _current; }
