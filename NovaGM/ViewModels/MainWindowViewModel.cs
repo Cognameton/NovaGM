@@ -49,6 +49,7 @@ namespace NovaGM.ViewModels
         public ICommand SaveAsMissionCommand { get; }
         public ICommand KickPlayerCommand { get; }
         public ICommand LoadScenarioCommand { get; }
+        public ICommand SelectGenreCommand { get; }
 
         private readonly AgentOrchestrator _agent = new();
         private readonly SemaphoreSlim _turnLock = new(1, 1);
