@@ -205,7 +205,7 @@ namespace NovaGM.ViewModels
                 {
                     var loadWindow = new LoadScenarioWindow();
                     var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
-                    var result = await loadWindow.ShowDialog<Mission?>(ownerWindow);
+                    var result = ownerWindow != null ? await loadWindow.ShowDialog<Mission?>(ownerWindow) : await loadWindow.ShowDialog<Mission?>();
                     
                     if (result != null)
                     {
