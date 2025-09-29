@@ -260,7 +260,7 @@ namespace NovaGM.Services
             return objectives;
         }
 
-        private static List<string> GenerateHooks(List<Message> gmMessages)
+        private static List<string> GenerateHooks(List<NovaGM.ViewModels.Message> gmMessages)
         {
             var hooks = new List<string>();
             
