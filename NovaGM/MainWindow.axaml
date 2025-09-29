@@ -36,6 +36,10 @@
         <MenuItem Header="_Settings" Command="{Binding OpenSettingsCommand}" />
       </MenuItem>
 
+      <MenuItem Header="_Genre">
+        <MenuItem Header="_Select Genre" Command="{Binding SelectGenreCommand}" />
+      </MenuItem>
+
       <MenuItem Header="_Help">
         <MenuItem Header="_About" Command="{Binding AboutCommand}" />
       </MenuItem>
