@@ -382,39 +382,40 @@ namespace NovaGM.ViewModels
                 Compendium.Clear();
                 
                 // Get current genre content
-                var currentGenre = GenreManager.Current.CurrentGenre;
-                var genreContent = GenreManager.GetGenreContent(currentGenre);
+                var availableRaces = GenreManager.GetAvailableRaces();
+                var availableClasses = GenreManager.GetAvailableClasses();
+                var availableItems = GenreManager.GetAvailableItems();
                 
                 // Add races
-                foreach (var race in genreContent.Races)
+                foreach (var race in availableRaces)
                 {
                     Compendium.Add(new CompendiumEntry 
                     { 
                         Category = "Race", 
                         Name = race.Key, 
-                        Description = race.Value 
+                        Description = race.Value.Description ?? "No description available." 
                     });
                 }
                 
                 // Add classes
-                foreach (var characterClass in genreContent.Classes)
+                foreach (var characterClass in availableClasses)
                 {
                     Compendium.Add(new CompendiumEntry 
                     { 
                         Category = "Class", 
                         Name = characterClass.Key, 
-                        Description = characterClass.Value 
+                        Description = characterClass.Value.Description ?? "No description available." 
                     });
                 }
                 
-                // Add equipment
-                foreach (var equipment in genreContent.Equipment)
+                // Add equipment/items
+                foreach (var item in availableItems)
                 {
                     Compendium.Add(new CompendiumEntry 
                     { 
                         Category = "Equipment", 
-                        Name = equipment.Key, 
-                        Description = equipment.Value 
+                        Name = item.Key, 
+                        Description = item.Value.Description ?? "No description available." 
                     });
                 }
             }
