@@ -210,11 +210,23 @@ namespace NovaGM.ViewModels
                 }
             });
 
-            // Consume LAN player inputs
+            // Consume LAN player inputs and track connected players
             _ = Task.Run(async () =>
             {
                 await foreach (var inp in coordinator.ReadInputsAsync(CancellationToken.None))
+                {
+                    // Track connected players
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        if (!ConnectedPlayers.Contains(inp.Player))
+                        {
+                            ConnectedPlayers.Add(inp.Player);
+                            Messages.Add(new Message("System", $"Player '{inp.Player}' joined the session."));
+                        }
+                    });
+                    
                     await HandleTurnAsync(inp.Player, inp.Text, broadcaster);
+                }
             });
         }
 
