@@ -436,7 +436,7 @@ document.getElementById('send').onclick = async () => {{
                                    }
                                });
 
-                               // POST /dice  { expression } - placeholder
+                               // POST /dice  { expression }
                                endpoints.MapPost("/dice", async ctx =>
                                {
                                    try
@@ -446,16 +446,14 @@ document.getElementById('send').onclick = async () => {{
                                        using var doc = JsonDocument.Parse(body);
                                        var expr = doc.RootElement.GetProperty("expression").GetString() ?? "1d20";
                                        
-                                       // Simple dice roll simulation
-                                       var random = new Random();
-                                       var total = random.Next(1, 21); // 1d20
+                                       var result = DiceService.Roll(expr);
                                        
                                        var response = new
                                        {
-                                           expression = expr,
-                                           rolls = new[] { total },
-                                           total = total,
-                                           description = $"Rolled {total}"
+                                           expression = result.Expression,
+                                           rolls = result.Rolls,
+                                           total = result.Total,
+                                           description = result.Description
                                        };
                                        
                                        ctx.Response.ContentType = "application/json";
