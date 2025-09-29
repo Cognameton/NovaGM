@@ -61,7 +61,7 @@
           <Expander Header="Available Races" IsExpanded="True" Margin="0,5">
             <ListBox x:Name="RacesPreview" MaxHeight="120">
               <ListBox.ItemTemplate>
-                <DataTemplate>
+                <DataTemplate x:DataType="views:PreviewItem">
                   <StackPanel>
                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
                     <TextBlock Text="{Binding Description}" FontSize="10" Foreground="Gray"/>
@@ -75,7 +75,7 @@
           <Expander Header="Available Classes" IsExpanded="True" Margin="0,5">
             <ListBox x:Name="ClassesPreview" MaxHeight="120">
               <ListBox.ItemTemplate>
-                <DataTemplate>
+                <DataTemplate x:DataType="views:PreviewItem">
                   <StackPanel>
                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
                     <TextBlock Text="{Binding Description}" FontSize="10" Foreground="Gray"/>
