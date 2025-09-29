@@ -335,6 +335,21 @@ namespace NovaGM.ViewModels
         public event PropertyChangedEventHandler? PropertyChanged;
         private void OnPropertyChanged([CallerMemberName] string? name = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+            
+        private static string GetLocalIp()
+        {
+            try
+            {
+                using var socket = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.InterNetwork, System.Net.Sockets.SocketType.Dgram, 0);
+                socket.Connect("8.8.8.8", 65530);
+                var endPoint = socket.LocalEndPoint as System.Net.IPEndPoint;
+                return endPoint?.Address?.ToString() ?? "127.0.0.1";
+            }
+            catch
+            {
+                return "127.0.0.1";
+            }
+        }
     }
 
     public sealed class Message : INotifyPropertyChanged
