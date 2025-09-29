@@ -42,6 +42,11 @@ namespace NovaGM.Services.Packs
             }
         }
 
+        public static void RefreshData()
+        {
+            LoadActiveOrDefault();
+        }
+
         public static PackData LoadFromFolder(string dataDir)
         {
             var pd = new PackData();
