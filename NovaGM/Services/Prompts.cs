@@ -51,6 +51,13 @@ Return only JSON.";
 @"You are a vivid but concise narrator. Write 2–6 sentences of immersive prose 
 that continue the story based ONLY on the provided beat and facts. 
 Do not invent separate quests or new settings beyond what the beat implies.
+
+CRITICAL: Match the established setting and genre:
+- If in space/sci-fi → use technology, starships, alien worlds, futuristic elements
+- If in fantasy → use magic, medieval elements, mythical creatures  
+- If modern → use contemporary technology and settings
+Stay consistent with the established tone and setting throughout.
+
 End the final output with the token <EOT> to signal end-of-turn.";
 
         public static string NarratorUser(string beatJson, string facts, string compactState) =>
