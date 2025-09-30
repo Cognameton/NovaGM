@@ -116,43 +116,43 @@ Return: {{ ""facts"": [""...""] }}";
     {
         public System.Collections.Generic.List<string>? Facts { get; set; }
     }
+}
 
-    // Runtime content guardrails to prevent unwanted commentary
-    public static class NarrationGuards
+// Runtime content guardrails to prevent unwanted commentary
+public static class NarrationGuards
+{
+    // Keep list short & surgical; match whole words/phrases case-insensitively
+    private static readonly string[] Banned = new[]
     {
-        // Keep list short & surgical; match whole words/phrases case-insensitively
-        private static readonly string[] Banned = new[]
+        "diversity", "equity", "inclusion", "dei",
+        "representation", "identity politics", "social justice",
+        "ally", "allyship", "marginalized", "oppression",
+        "patriarchy", "colonialism", "privilege",
+        "pride flag", "flags of identity", "waving flags of",
+        "diverse crew", "representation of", "pride in representing"
+    };
+
+    public static bool ViolatesPolicy(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        var span = text.AsSpan();
+        foreach (var term in Banned)
         {
-            "diversity", "equity", "inclusion", "dei",
-            "representation", "identity politics", "social justice",
-            "ally", "allyship", "marginalized", "oppression",
-            "patriarchy", "colonialism", "privilege",
-            "pride flag", "flags of identity", "waving flags of",
-            "diverse crew", "representation of", "pride in representing"
+            if (span.IndexOf(term.AsSpan(), StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+        }
+        return false;
+    }
+
+    public static string GetNeutralFallback(string setting = "")
+    {
+        return setting.ToLowerInvariant() switch
+        {
+            var s when s.Contains("space") || s.Contains("sci") => 
+                "The scene holds a quiet tension. Control panels hum with energy, displays casting their glow across the surfaces. What do you do next?",
+            var s when s.Contains("fantasy") || s.Contains("magic") => 
+                "The moment stretches, filled with possibility. Shadows dance in the flickering light as the scene awaits your next move.",
+            _ => "The scene holds a quiet tension. The environment awaits your next action."
         };
-
-        public static bool ViolatesPolicy(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text)) return false;
-            var span = text.AsSpan();
-            foreach (var term in Banned)
-            {
-                if (span.IndexOf(term.AsSpan(), StringComparison.OrdinalIgnoreCase) >= 0)
-                    return true;
-            }
-            return false;
-        }
-
-        public static string GetNeutralFallback(string setting = "")
-        {
-            return setting.ToLowerInvariant() switch
-            {
-                var s when s.Contains("space") || s.Contains("sci") => 
-                    "The scene holds a quiet tension. Control panels hum with energy, displays casting their glow across the surfaces. What do you do next?",
-                var s when s.Contains("fantasy") || s.Contains("magic") => 
-                    "The moment stretches, filled with possibility. Shadows dance in the flickering light as the scene awaits your next move.",
-                _ => "The scene holds a quiet tension. The environment awaits your next action."
-            };
-        }
     }
 }
