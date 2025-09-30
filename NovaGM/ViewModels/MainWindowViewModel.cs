@@ -539,7 +539,7 @@ namespace NovaGM.ViewModels
                 var saveDialog = new SaveSessionDialog();
                 if (ownerWindow != null)
                 {
-                    saveDialog.ShowDialog(ownerWindow);
+                    _ = saveDialog.ShowDialog(ownerWindow);
                     await Task.Run(() =>
                     {
                         while (saveDialog.IsVisible)
