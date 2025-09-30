@@ -168,10 +168,20 @@ public static class NarrationGuards
             cleaned.EndsWith(" their", StringComparison.OrdinalIgnoreCase) ||
             cleaned.EndsWith(" the", StringComparison.OrdinalIgnoreCase) ||
             cleaned.EndsWith(" a", StringComparison.OrdinalIgnoreCase) ||
-            cleaned.EndsWith(" an", StringComparison.OrdinalIgnoreCase) ||
-            cleaned.Contains("etched with", StringComparison.OrdinalIgnoreCase) && !cleaned.Substring(cleaned.LastIndexOf("etched with", StringComparison.OrdinalIgnoreCase)).Contains(".")))
+            cleaned.EndsWith(" an", StringComparison.OrdinalIgnoreCase))
         {
             return true;
+        }
+        
+        // Special check for "etched with" pattern
+        int etchedIndex = cleaned.LastIndexOf("etched with", StringComparison.OrdinalIgnoreCase);
+        if (etchedIndex >= 0)
+        {
+            var afterEtched = cleaned.Substring(etchedIndex);
+            if (!afterEtched.Contains("."))
+            {
+                return true;
+            }
         }
         
         return false;
