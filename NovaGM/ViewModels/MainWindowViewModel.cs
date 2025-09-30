@@ -338,7 +338,11 @@ namespace NovaGM.ViewModels
                 {
                     // GM input: This is a narrative prompt/instruction to the AI
                     // Add GM prompt to local display
-                    Dispatcher.UIThread.Post(() => Messages.Add(new Message("GM", text)));
+                    var gmPrompt = new Message("GM", text);
+                    Dispatcher.UIThread.Post(() => {
+                        Messages.Add(gmPrompt);
+                        MessageHistoryService.AddMessage(gmPrompt);
+                    });
 
                     // Broadcast GM prompt to all connected players
                     broadcaster.Publish($"GM: {text}\n");
