@@ -151,6 +151,49 @@ public static class NarrationGuards
         return false;
     }
 
+    public static bool IsIncomplete(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return true;
+        
+        // Remove <EOT> token for checking
+        var cleaned = text.Replace("<EOT>", "").Trim();
+        if (string.IsNullOrEmpty(cleaned)) return true;
+        
+        // Check if it ends with proper punctuation
+        var lastChar = cleaned[^1];
+        if (!"!?.".Contains(lastChar)) return true;
+        
+        // Check for common incomplete patterns
+        if (cleaned.EndsWith(" with", StringComparison.OrdinalIgnoreCase) ||
+            cleaned.EndsWith(" their", StringComparison.OrdinalIgnoreCase) ||
+            cleaned.EndsWith(" the", StringComparison.OrdinalIgnoreCase) ||
+            cleaned.EndsWith(" a", StringComparison.OrdinalIgnoreCase) ||
+            cleaned.EndsWith(" an", StringComparison.OrdinalIgnoreCase) ||
+            cleaned.Contains("etched with", StringComparison.OrdinalIgnoreCase) && !cleaned.Contains(".", cleaned.LastIndexOf("etched with", StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+        
+        return false;
+    }
+
+    public static string CompleteText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return text;
+        
+        var cleaned = text.Replace("<EOT>", "").Trim();
+        if (string.IsNullOrEmpty(cleaned)) return text;
+        
+        // If doesn't end with punctuation, add period
+        var lastChar = cleaned[^1];
+        if (!"!?.".Contains(lastChar))
+        {
+            cleaned += ".";
+        }
+        
+        return cleaned + "<EOT>";
+    }
+
     public static string GetNeutralFallback(string setting = "")
     {
         return setting.ToLowerInvariant() switch
