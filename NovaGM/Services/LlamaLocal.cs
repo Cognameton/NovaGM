@@ -39,7 +39,7 @@ namespace NovaGM.Services
 
             var sb = new StringBuilder();
             var prompt = sys + "\n\nUser:\n" + user + "\nAssistant:\n";
-            var infer = new InferenceParams { MaxTokens = 280, Temperature = 0.7f, TopP = 0.9f };
+            var infer = new InferenceParams { MaxTokens = 280 };
 
             await foreach (var tok in _chat.ChatAsync(
                 new ChatHistory.Message(AuthorRole.User, prompt),
