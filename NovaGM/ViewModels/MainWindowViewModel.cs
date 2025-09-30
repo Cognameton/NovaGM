@@ -130,15 +130,9 @@ namespace NovaGM.ViewModels
                 return Task.CompletedTask;
             });
 
-            ExitCommand = new RelayCommand(_ =>
+            ExitCommand = new RelayCommand(async _ =>
             {
-                // Close main window → triggers App cleanup
-                if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life
-                    && life.MainWindow is { } mw)
-                {
-                    mw.Close();
-                }
-                return Task.CompletedTask;
+                await HandleExitSequenceAsync();
             });
 
             OpenPacksCommand = new RelayCommand(_ =>
