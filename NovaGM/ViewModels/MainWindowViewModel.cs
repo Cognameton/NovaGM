@@ -351,7 +351,7 @@ namespace NovaGM.ViewModels
                     var aiGmResponse = new Message("GM", "");
                     Dispatcher.UIThread.Post(() => {
                         Messages.Add(aiGmResponse);
-                        MessageHistoryService.AddMessage(aiGmResponse);
+                        MessageHistoryService.AddMessage(new Models.Message("GM", ""));
                     });
 
                     // Broadcast AI-GM response indicator
