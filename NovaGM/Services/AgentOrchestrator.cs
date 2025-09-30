@@ -78,19 +78,22 @@ namespace NovaGM.Services
             }
 
             var compact = _state.CompactSlice();
+            var genreContext = BuildGenreContext();
+            var controllerSystem = AppendGenreContext(Prompts.ControllerSystem, genreContext);
 
             // PLAN → Beat JSON (Controller)
             using var planCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
             planCts.CancelAfter(TimeSpan.FromSeconds(12));
             var beatJson = await AskSafeAsync(
                 _controller,
-                Prompts.ControllerSystem,
-                Prompts.ControllerUser(playerText, facts, compact, Prompts.ControllerSchema),
+                controllerSystem,
+                Prompts.ControllerUser(playerText, facts, compact, Prompts.ControllerSchema, genreContext),
                 planCts.Token,
                 expectJson: true
             );
 
-            var beat = TryDeserialize<Beat>(beatJson) ?? await TryRepairBeatAsync(playerText, facts, compact, beatJson, planCts.Token);
+            var beat = TryDeserialize<Beat>(beatJson) 
+                       ?? await TryRepairBeatAsync(playerText, facts, compact, beatJson, genreContext, controllerSystem, planCts.Token);
             if (beat is null)
                 return "The scene hesitates, waiting for clarity. 1) Look around 2) Call out 3) Wait.<EOT>";
 
@@ -104,10 +107,11 @@ namespace NovaGM.Services
             // NARRATE → prose (stream tokens to UI if delegate is provided)
             using var narrCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
             narrCts.CancelAfter(TimeSpan.FromSeconds(20));
+            var narratorSystem = AppendGenreContext(Prompts.NarratorSystem, genreContext);
             var prose = await AskSafeAsync(
                 _narrator,
-                Prompts.NarratorSystem,
-                Prompts.NarratorUser(JsonSerializer.Serialize(beat, _json), facts, _state.CompactSlice()),
+                narratorSystem,
+                Prompts.NarratorUser(JsonSerializer.Serialize(beat, _json), facts, compact, genreContext),
                 narrCts.Token,
                 expectJson: false,
                 onToken: onNarratorToken
@@ -215,12 +219,115 @@ namespace NovaGM.Services
             catch { return default; }
         }
 
-        private async Task<Beat?> TryRepairBeatAsync(string player, string facts, string compact, string badJson, CancellationToken ct)
+        private async Task<Beat?> TryRepairBeatAsync(
+            string player,
+            string facts,
+            string compact,
+            string badJson,
+            string genreContext,
+            string controllerSystem,
+            CancellationToken ct)
         {
-            var repairUser = Prompts.ControllerUser(player, facts, compact, Prompts.ControllerSchema) +
+            var repairUser = Prompts.ControllerUser(player, facts, compact, Prompts.ControllerSchema, genreContext) +
                              $"\nThe previous JSON was malformed: ```{badJson}```\nReturn ONLY corrected JSON.";
-            var repaired = await AskSafeAsync(_controller, Prompts.ControllerSystem, repairUser, ct, expectJson: true);
+            var repaired = await AskSafeAsync(_controller, controllerSystem, repairUser, ct, expectJson: true);
             return TryDeserialize<Beat>(repaired);
+        }
+
+        private static string AppendGenreContext(string basePrompt, string genreContext)
+        {
+            if (string.IsNullOrWhiteSpace(genreContext)) return basePrompt;
+            return $"{basePrompt}\n\nUI-selected genre: {genreContext}";
+        }
+
+        private static string BuildGenreContext()
+        {
+            try
+            {
+                var config = GenreManager.Current;
+                var display = GenreManager.GetGenreDisplayName(config.Genre);
+                var segments = new List<string> { $"Genre: {display}" };
+
+                var raceData = GenreManager.GetAvailableRaces();
+                var availableRaces = SafeCollectNames(raceData.Values.Select(r => r.Name), raceData.Keys);
+                if (availableRaces.Length > 0)
+                {
+                    segments.Add($"Races: {string.Join(", ", availableRaces)}");
+                }
+
+                var classData = GenreManager.GetAvailableClasses();
+                var availableClasses = SafeCollectNames(classData.Values.Select(c => c.Name), classData.Keys);
+                if (availableClasses.Length > 0)
+                {
+                    segments.Add($"Classes: {string.Join(", ", availableClasses)}");
+                }
+
+                var availableItems = GenreManager.GetAvailableItems().Values
+                    .Select(i => string.IsNullOrWhiteSpace(i.Name) ? i.Id : i.Name)
+                    .Where(n => !string.IsNullOrWhiteSpace(n))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Take(4)
+                    .ToArray();
+                if (availableItems.Length > 0)
+                {
+                    segments.Add($"Equipment: {string.Join(", ", availableItems)}");
+                }
+
+                if (config.Genre == GameGenre.Custom)
+                {
+                    var customRaces = SafeCollectNames(config.CustomRaces.Values.Select(r => r.Name),
+                                                        config.CustomRaces.Keys);
+                    if (customRaces.Length > 0)
+                    {
+                        segments.Add($"Custom races: {string.Join(", ", customRaces)}");
+                    }
+
+                    var customClasses = SafeCollectNames(config.CustomClasses.Values.Select(c => c.Name),
+                                                          config.CustomClasses.Keys);
+                    if (customClasses.Length > 0)
+                    {
+                        segments.Add($"Custom classes: {string.Join(", ", customClasses)}");
+                    }
+
+                    if (customRaces.Length == 0 && customClasses.Length == 0)
+                    {
+                        segments.Add("Custom genre relies on GM-defined tone and content.");
+                    }
+                }
+                else
+                {
+                    var tone = config.Genre switch
+                    {
+                        GameGenre.Fantasy => "Tone: magic, medieval adventure, mythical lore.",
+                        GameGenre.SciFi   => "Tone: futuristic technology, starships, alien worlds.",
+                        GameGenre.Horror  => "Tone: dread, suspense, supernatural danger.",
+                        _                 => string.Empty
+                    };
+                    if (!string.IsNullOrWhiteSpace(tone))
+                    {
+                        segments.Add(tone);
+                    }
+                }
+
+                return string.Join("; ", segments);
+            }
+            catch
+            {
+                return "Genre information unavailable";
+            }
+        }
+
+        private static string[] SafeCollectNames(IEnumerable<string?> primary, IEnumerable<string> fallbackIds)
+        {
+            var fallbackArray = fallbackIds.ToArray();
+            var names = primary
+                .Select((n, idx) => string.IsNullOrWhiteSpace(n) ? fallbackArray.ElementAtOrDefault(idx) : n)
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .Select(n => n!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(4)
+                .ToArray();
+            return names;
         }
     }
 }

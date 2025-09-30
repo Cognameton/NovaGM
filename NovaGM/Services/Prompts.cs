@@ -40,9 +40,15 @@ Return ONLY JSON that matches the schema.";
   ""required"": [ ""Title"", ""Summary"" ]
 }";
 
-        public static string ControllerUser(string playerText, string facts, string compactState, string schema) =>
+        public static string ControllerUser(
+            string playerText,
+            string facts,
+            string compactState,
+            string schema,
+            string genreContext) =>
 $@"Player action: {playerText}
 Recent facts: {facts}
+Genre context: {genreContext}
 Compact state: {compactState}
 Schema: {schema}
 Return only JSON.";
@@ -60,9 +66,10 @@ Stay consistent with the established tone and setting throughout.
 
 End the final output with the token <EOT> to signal end-of-turn.";
 
-        public static string NarratorUser(string beatJson, string facts, string compactState) =>
+        public static string NarratorUser(string beatJson, string facts, string compactState, string genreContext) =>
 $@"Beat (JSON): {beatJson}
 Facts: {facts}
+Genre context: {genreContext}
 State: {compactState}
 Write narration now. End with <EOT>.";
 
