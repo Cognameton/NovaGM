@@ -541,7 +541,9 @@ namespace NovaGM.ViewModels
                 var saveDialog = new SaveSessionDialog();
                 if (ownerWindow != null)
                 {
-                    _ = saveDialog.ShowDialog(ownerWindow);
+#pragma warning disable CS4014
+                    saveDialog.ShowDialog(ownerWindow);
+#pragma warning restore CS4014
                     await Task.Run(() =>
                     {
                         while (saveDialog.IsVisible)
