@@ -102,6 +102,10 @@ namespace NovaGM.Views
                 NoSelectionMessage.IsVisible = false;
                 CharacterSheetContent.IsVisible = true;
                 
+                // Enable buttons
+                ViewCharacterButton.IsEnabled = true;
+                KickPlayerButton.IsEnabled = true;
+                
                 // Populate character information
                 CharacterName.Text = character.Name;
                 CharacterRace.Text = character.Race;
@@ -121,6 +125,10 @@ namespace NovaGM.Views
                 // Hide character sheet content
                 NoSelectionMessage.IsVisible = true;
                 CharacterSheetContent.IsVisible = false;
+                
+                // Disable buttons
+                ViewCharacterButton.IsEnabled = false;
+                KickPlayerButton.IsEnabled = false;
             }
         }
 
