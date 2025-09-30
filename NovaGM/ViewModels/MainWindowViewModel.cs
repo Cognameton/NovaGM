@@ -341,7 +341,7 @@ namespace NovaGM.ViewModels
                     var gmPrompt = new Message("GM", text);
                     Dispatcher.UIThread.Post(() => {
                         Messages.Add(gmPrompt);
-                        MessageHistoryService.AddMessage(gmPrompt);
+                        MessageHistoryService.AddMessage(new Models.Message("GM", text));
                     });
 
                     // Broadcast GM prompt to all connected players
