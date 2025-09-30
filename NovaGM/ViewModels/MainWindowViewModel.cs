@@ -207,6 +207,28 @@ namespace NovaGM.ViewModels
                 return Task.CompletedTask;
             });
 
+            ViewPlayersCommand = new RelayCommand(_ =>
+            {
+                try
+                {
+                    var playerWindow = new PlayerManagementWindow();
+                    var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
+                    if (ownerWindow != null)
+                    {
+                        playerWindow.Show(ownerWindow);
+                    }
+                    else
+                    {
+                        playerWindow.Show();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Messages.Add(new Message("GM", $"Failed to open player management: {ex.Message}"));
+                }
+                return Task.CompletedTask;
+            });
+
             LoadScenarioCommand = new RelayCommand(async _ =>
             {
                 try
