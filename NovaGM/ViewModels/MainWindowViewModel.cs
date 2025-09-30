@@ -716,6 +716,13 @@ namespace NovaGM.ViewModels
         public event PropertyChangedEventHandler? PropertyChanged;
         private void OnPropertyChanged([CallerMemberName] string? name = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+        private void AddMessage(string role, string content)
+        {
+            var message = new Message(role, content);
+            Messages.Add(message);
+            MessageHistoryService.AddMessage(message);
+        }
             
         private static string GetLocalIp()
         {
