@@ -115,34 +115,6 @@ namespace NovaGM.Services
             if (string.IsNullOrWhiteSpace(prose))
                 prose = "Silence lingers. 1) Call out 2) Advance 3) Wait.<EOT>";
 
-            // TODO: Temporarily disabled content guards for debugging
-            // Content guard: Check for unwanted ideological commentary and incomplete sentences
-            /*
-            if (NarrationGuards.ViolatesPolicy(prose) || NarrationGuards.IsIncomplete(prose))
-            {
-                // First attempt: regenerate once with same inputs
-                prose = await AskSafeAsync(
-                    _narrator,
-                    Prompts.NarratorSystem,
-                    Prompts.NarratorUser(JsonSerializer.Serialize(beat, _json), facts, _state.CompactSlice()),
-                    narrCts.Token,
-                    expectJson: false,
-                    onToken: onNarratorToken
-                );
-
-                // If it still violates policy or is incomplete, use neutral fallback or completion
-                if (NarrationGuards.ViolatesPolicy(prose))
-                {
-                    var currentLocation = _state.Load().Location ?? "";
-                    prose = NarrationGuards.GetNeutralFallback(currentLocation) + "<EOT>";
-                }
-                else if (NarrationGuards.IsIncomplete(prose))
-                {
-                    prose = NarrationGuards.CompleteText(prose);
-                }
-            }
-            */
-
             // MEMORY → new facts
             using var memoCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
             memoCts.CancelAfter(TimeSpan.FromSeconds(6));
