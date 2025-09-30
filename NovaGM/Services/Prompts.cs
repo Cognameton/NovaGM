@@ -198,10 +198,12 @@ public static class NarrationGuards
     {
         return setting.ToLowerInvariant() switch
         {
-            var s when s.Contains("space") || s.Contains("sci") => 
+            var s when s.Contains("space") || s.Contains("sci") || s.Contains("tech") || s.Contains("future") => 
                 "The scene holds a quiet tension. Control panels hum with energy, displays casting their glow across the surfaces. What do you do next?",
-            var s when s.Contains("fantasy") || s.Contains("magic") => 
+            var s when s.Contains("fantasy") || s.Contains("magic") || s.Contains("medieval") || s.Contains("kingdom") => 
                 "The moment stretches, filled with possibility. Shadows dance in the flickering light as the scene awaits your next move.",
+            var s when s.Contains("horror") || s.Contains("dark") || s.Contains("supernatural") || s.Contains("suspense") => 
+                "An unsettling silence hangs in the air. The atmosphere grows heavy with unspoken dread as something stirs in the shadows.",
             _ => "The scene holds a quiet tension. The environment awaits your next action."
         };
     }
