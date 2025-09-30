@@ -115,7 +115,9 @@ namespace NovaGM.Services
             if (string.IsNullOrWhiteSpace(prose))
                 prose = "Silence lingers. 1) Call out 2) Advance 3) Wait.<EOT>";
 
+            // TODO: Temporarily disabled content guards for debugging
             // Content guard: Check for unwanted ideological commentary and incomplete sentences
+            /*
             if (NarrationGuards.ViolatesPolicy(prose) || NarrationGuards.IsIncomplete(prose))
             {
                 // First attempt: regenerate once with same inputs
@@ -139,6 +141,7 @@ namespace NovaGM.Services
                     prose = NarrationGuards.CompleteText(prose);
                 }
             }
+            */
 
             // MEMORY → new facts
             using var memoCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
