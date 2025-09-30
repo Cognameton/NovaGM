@@ -330,34 +330,72 @@ namespace NovaGM.ViewModels
                     GenreManager.StartGame();
                 }
 
-                // Add player message to GM display
-                Dispatcher.UIThread.Post(() => Messages.Add(new Message(playerName, text)));
-
-                // Broadcast player message to all connected players
-                broadcaster.Publish($"{playerName}: {text}\n");
-
-                var gm = new Message("GM", "");
-                Dispatcher.UIThread.Post(() => Messages.Add(gm));
-
-                // Broadcast GM response indicator to all players
-                broadcaster.Publish("GM: ");
-
-                string final = await _agent.RunTurnAsync(
-                    text,
-                    default,
-                    onNarratorToken: chunk =>
-                    {
-                        Dispatcher.UIThread.Post(() => gm.Append(chunk));
-                        broadcaster.Publish(chunk);
-                    }
-                );
-
-                Dispatcher.UIThread.Post(() =>
+                // Handle GM input differently than player input
+                if (playerName == "GM")
                 {
-                    if (!string.IsNullOrEmpty(final) && !gm.Content.Equals(final))
-                        gm.Content = final;
-                    broadcaster.Publish("\n");
-                });
+                    // GM input: This is a narrative prompt/instruction to the AI
+                    // Add GM prompt to local display
+                    Dispatcher.UIThread.Post(() => Messages.Add(new Message("GM", text)));
+
+                    // Broadcast GM prompt to all connected players
+                    broadcaster.Publish($"GM: {text}\n");
+
+                    // Process the GM's prompt through the AI as a narrative instruction
+                    var gmResponse = new Message("AI Response", "");
+                    Dispatcher.UIThread.Post(() => Messages.Add(gmResponse));
+
+                    // Broadcast AI response indicator
+                    broadcaster.Publish("AI Response: ");
+
+                    string final = await _agent.RunTurnAsync(
+                        $"GM instruction: {text}",
+                        default,
+                        onNarratorToken: chunk =>
+                        {
+                            Dispatcher.UIThread.Post(() => gmResponse.Append(chunk));
+                            broadcaster.Publish(chunk);
+                        }
+                    );
+
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        if (!string.IsNullOrEmpty(final) && !gmResponse.Content.Equals(final))
+                            gmResponse.Content = final;
+                        broadcaster.Publish("\n");
+                    });
+                }
+                else
+                {
+                    // Player input: Standard player action processing
+                    // Add player message to GM display
+                    Dispatcher.UIThread.Post(() => Messages.Add(new Message(playerName, text)));
+
+                    // Broadcast player message to all connected players
+                    broadcaster.Publish($"{playerName}: {text}\n");
+
+                    var gm = new Message("GM", "");
+                    Dispatcher.UIThread.Post(() => Messages.Add(gm));
+
+                    // Broadcast GM response indicator to all players
+                    broadcaster.Publish("GM: ");
+
+                    string final = await _agent.RunTurnAsync(
+                        text,
+                        default,
+                        onNarratorToken: chunk =>
+                        {
+                            Dispatcher.UIThread.Post(() => gm.Append(chunk));
+                            broadcaster.Publish(chunk);
+                        }
+                    );
+
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        if (!string.IsNullOrEmpty(final) && !gm.Content.Equals(final))
+                            gm.Content = final;
+                        broadcaster.Publish("\n");
+                    });
+                }
             }
             finally { _turnLock.Release(); }
         }
