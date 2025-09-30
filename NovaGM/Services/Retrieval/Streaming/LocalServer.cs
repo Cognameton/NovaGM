@@ -471,6 +471,14 @@ document.getElementById('send').onclick = async () => {{
                                {
                                    await ctx.Response.WriteAsync("ok");
                                });
+
+                               // GET /history - Returns full conversation history
+                               endpoints.MapGet("/history", async ctx =>
+                               {
+                                   ctx.Response.ContentType = "application/json";
+                                   var history = MessageHistoryService.GetMessagesForWeb();
+                                   await ctx.Response.WriteAsync(JsonSerializer.Serialize(history));
+                               });
                            });
                        });
                 }).Build();
