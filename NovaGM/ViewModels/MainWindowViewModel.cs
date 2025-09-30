@@ -381,7 +381,7 @@ namespace NovaGM.ViewModels
                     var playerMessage = new Message(playerName, text);
                     Dispatcher.UIThread.Post(() => {
                         Messages.Add(playerMessage);
-                        MessageHistoryService.AddMessage(playerMessage);
+                        MessageHistoryService.AddMessage(new Models.Message(playerName, text));
                     });
 
                     // Broadcast player message to all connected players
