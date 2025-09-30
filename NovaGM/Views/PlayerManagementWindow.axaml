@@ -60,11 +60,9 @@
           <StackPanel Margin="0,15,0,0" Spacing="5">
             <Button x:Name="ViewCharacterButton" 
                     Content="View Character Sheet" 
-                    IsEnabled="{Binding SelectedPlayer, Converter={x:Static ObjectConverters.IsNotNull}}"
                     Click="OnViewCharacterClick"/>
             <Button x:Name="KickPlayerButton" 
                     Content="Kick Player" 
-                    IsEnabled="{Binding SelectedPlayer, Converter={x:Static ObjectConverters.IsNotNull}}"
                     Click="OnKickPlayerClick"
                     Classes="danger"/>
           </StackPanel>
