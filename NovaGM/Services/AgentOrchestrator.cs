@@ -115,8 +115,8 @@ namespace NovaGM.Services
             if (string.IsNullOrWhiteSpace(prose))
                 prose = "Silence lingers. 1) Call out 2) Advance 3) Wait.<EOT>";
 
-            // Content guard: Check for unwanted ideological commentary
-            if (NarrationGuards.ViolatesPolicy(prose))
+            // Content guard: Check for unwanted ideological commentary and incomplete sentences
+            if (NarrationGuards.ViolatesPolicy(prose) || NarrationGuards.IsIncomplete(prose))
             {
                 // First attempt: regenerate once with same inputs
                 prose = await AskSafeAsync(
@@ -128,11 +128,15 @@ namespace NovaGM.Services
                     onToken: onNarratorToken
                 );
 
-                // If it still violates policy, use neutral fallback
+                // If it still violates policy or is incomplete, use neutral fallback or completion
                 if (NarrationGuards.ViolatesPolicy(prose))
                 {
                     var currentLocation = _state.Load().Location ?? "";
                     prose = NarrationGuards.GetNeutralFallback(currentLocation) + "<EOT>";
+                }
+                else if (NarrationGuards.IsIncomplete(prose))
+                {
+                    prose = NarrationGuards.CompleteText(prose);
                 }
             }
 
