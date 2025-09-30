@@ -116,7 +116,7 @@ namespace NovaGM.Services
                 prose = "Silence lingers. 1) Call out 2) Advance 3) Wait.<EOT>";
 
             // Content guard: Check for unwanted ideological commentary
-            if (Prompts.NarrationGuards.ViolatesPolicy(prose))
+            if (NarrationGuards.ViolatesPolicy(prose))
             {
                 // First attempt: regenerate once with same inputs
                 prose = await AskSafeAsync(
@@ -129,10 +129,10 @@ namespace NovaGM.Services
                 );
 
                 // If it still violates policy, use neutral fallback
-                if (Prompts.NarrationGuards.ViolatesPolicy(prose))
+                if (NarrationGuards.ViolatesPolicy(prose))
                 {
-                    var currentLocation = _state.Load().CurrentLocation ?? "";
-                    prose = Prompts.NarrationGuards.GetNeutralFallback(currentLocation) + "<EOT>";
+                    var currentLocation = _state.Load().Location ?? "";
+                    prose = NarrationGuards.GetNeutralFallback(currentLocation) + "<EOT>";
                 }
             }
 
