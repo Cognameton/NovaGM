@@ -378,7 +378,11 @@ namespace NovaGM.ViewModels
                 {
                     // Player input: Standard player action processing
                     // Add player message to GM display
-                    Dispatcher.UIThread.Post(() => Messages.Add(new Message(playerName, text)));
+                    var playerMessage = new Message(playerName, text);
+                    Dispatcher.UIThread.Post(() => {
+                        Messages.Add(playerMessage);
+                        MessageHistoryService.AddMessage(playerMessage);
+                    });
 
                     // Broadcast player message to all connected players
                     broadcaster.Publish($"{playerName}: {text}\n");
