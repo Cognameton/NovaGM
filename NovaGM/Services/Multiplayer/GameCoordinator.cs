@@ -101,5 +101,28 @@ namespace NovaGM.Services.Multiplayer
         }
 
         private static string NormalizeKey(string name) => (name ?? "").Trim().ToUpperInvariant();
+
+        // Additional methods for player management
+        public string[] GetConnectedPlayers()
+        {
+            return _players.Keys.ToArray();
+        }
+
+        public PlayerCharacter? GetPlayerCharacter(string playerName)
+        {
+            var key = NormalizeKey(playerName);
+            return _players.TryGetValue(key, out var character) ? character : null;
+        }
+
+        public bool KickPlayer(string playerName)
+        {
+            var key = NormalizeKey(playerName);
+            return _players.TryRemove(key, out _);
+        }
+
+        public int GetConnectedPlayerCount()
+        {
+            return _players.Count;
+        }
     }
 }
