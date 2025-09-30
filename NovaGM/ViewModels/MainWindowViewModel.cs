@@ -505,18 +505,29 @@ namespace NovaGM.ViewModels
                 // Step 1: Exit confirmation dialog
                 var exitDialog = new ExitConfirmationDialog();
                 var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
+                
                 if (ownerWindow != null)
                 {
-                    await exitDialog.ShowDialog(ownerWindow);
+                    exitDialog.ShowDialog(ownerWindow);
+                    // Wait for dialog to complete
+                    await Task.Run(() =>
+                    {
+                        while (exitDialog.IsVisible)
+                        {
+                            Thread.Sleep(50);
+                        }
+                    });
                 }
                 else
                 {
                     exitDialog.Show();
-                    // Wait for dialog to close in a simple way
-                    while (exitDialog.IsVisible)
+                    await Task.Run(() =>
                     {
-                        await Task.Delay(100);
-                    }
+                        while (exitDialog.IsVisible)
+                        {
+                            Thread.Sleep(50);
+                        }
+                    });
                 }
 
                 if (exitDialog.Result != true)
@@ -528,15 +539,25 @@ namespace NovaGM.ViewModels
                 var saveDialog = new SaveSessionDialog();
                 if (ownerWindow != null)
                 {
-                    await saveDialog.ShowDialog(ownerWindow);
+                    saveDialog.ShowDialog(ownerWindow);
+                    await Task.Run(() =>
+                    {
+                        while (saveDialog.IsVisible)
+                        {
+                            Thread.Sleep(50);
+                        }
+                    });
                 }
                 else
                 {
                     saveDialog.Show();
-                    while (saveDialog.IsVisible)
+                    await Task.Run(() =>
                     {
-                        await Task.Delay(100);
-                    }
+                        while (saveDialog.IsVisible)
+                        {
+                            Thread.Sleep(50);
+                        }
+                    });
                 }
 
                 if (saveDialog.Result == true)
