@@ -43,6 +43,10 @@ namespace NovaGM.Views
         {
             PlayersListBox.ItemsSource = _players;
             DataContext = this;
+            
+            // Initialize button states
+            ViewCharacterButton.IsEnabled = false;
+            KickPlayerButton.IsEnabled = false;
         }
 
         private void LoadConnectedPlayers()
