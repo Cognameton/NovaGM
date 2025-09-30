@@ -20,6 +20,7 @@ namespace NovaGM.Services.Multiplayer
         public string Name { get; set; } = "";
         public string Race { get; set; } = "";
         public string Class { get; set; } = "";
+        public int? Level { get; set; } = 1;
         public int STR { get; set; }
         public int DEX { get; set; }
         public int CON { get; set; }
