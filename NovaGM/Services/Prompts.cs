@@ -53,9 +53,9 @@ that continue the story based ONLY on the provided beat and facts.
 Do not invent separate quests or new settings beyond what the beat implies.
 
 CRITICAL: Match the established setting and genre:
-- If in space/sci-fi → use technology, starships, alien worlds, futuristic elements
-- If in fantasy → use magic, medieval elements, mythical creatures  
-- If modern → use contemporary technology and settings
+- If in Fantasy → use magic, medieval elements, mythical creatures, ancient kingdoms
+- If in Sci-Fi → use technology, starships, alien worlds, futuristic elements, cyberpunk aesthetics
+- If in Horror → use suspense, psychological tension, supernatural elements, modern/contemporary settings with dark atmosphere
 Stay consistent with the established tone and setting throughout.
 
 TOPIC BOUNDARY — HARD BAN:
