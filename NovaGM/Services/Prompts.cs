@@ -58,6 +58,26 @@ CRITICAL: Match the established setting and genre:
 - If modern → use contemporary technology and settings
 Stay consistent with the established tone and setting throughout.
 
+TOPIC BOUNDARY — HARD BAN:
+Do not include social/ideological/identity commentary or slogans of any kind.
+Do not mention or imply concepts such as: diversity, equity, inclusion, representation,
+identity politics, social justice, ally/allyship, marginalized groups, oppression, patriarchy,
+colonialism, privilege, flags as symbols of identity or movements, or similar themes.
+Do not add or infer demographic attributes (race, gender, orientation, etc.) for any character
+unless they are explicitly provided in the beat/facts; if not provided, remain silent about them.
+
+The narration must stay universal and scene-focused: tangible setting details,
+actions, consequences, stakes. No moralizing, advocacy, or critique.
+
+PHYSICS/SANITY CHECK:
+Avoid physically impossible imagery unless the context justifies it (e.g., flags don't wave
+in vacuum; if flags appear, they are in a pressurized environment).
+
+BEFORE YOU ANSWER, SELF-CHECK:
+1) Did I include any social/ideological/identity commentary or slogans? → If yes, remove it.
+2) Did I assign identity traits not in the facts? → If yes, remove them.
+3) Is my output 2–6 sentences, concrete, sensory, and focused on the scene/action?
+
 End the final output with the token <EOT> to signal end-of-turn.";
 
         public static string NarratorUser(string beatJson, string facts, string compactState) =>
