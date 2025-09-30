@@ -53,7 +53,7 @@ namespace NovaGM.Views
         {
             _players.Clear();
             
-            // Get connected players from GameCoordinator
+            // Get connected players from GameCoordinator's stored characters
             var connectedPlayerNames = _coordinator.GetConnectedPlayers();
             
             foreach (var playerName in connectedPlayerNames)
@@ -79,7 +79,8 @@ namespace NovaGM.Views
                 {
                     Name = "No players connected",
                     Status = "Waiting for players to join...",
-                    CharacterSummary = ""
+                    CharacterSummary = "",
+                    Character = null
                 });
             }
         }
