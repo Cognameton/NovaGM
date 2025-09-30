@@ -23,6 +23,7 @@
       </MenuItem>
 
       <MenuItem Header="_Players">
+        <MenuItem Header="_View Players" Command="{Binding ViewPlayersCommand}" />
         <MenuItem Header="_Kick Player" Command="{Binding KickPlayerCommand}" />
         <MenuItem Header="_Load Scenario" Command="{Binding LoadScenarioCommand}" />
       </MenuItem>
