@@ -7,9 +7,13 @@ namespace NovaGM.Views
 {
     public partial class DetailedCharacterWindow : Window
     {
-        public DetailedCharacterWindow(PlayerCharacter character, string playerName)
+        public DetailedCharacterWindow()
         {
             InitializeComponent();
+        }
+
+        public DetailedCharacterWindow(PlayerCharacter character, string playerName) : this()
+        {
             PopulateCharacterSheet(character, playerName);
         }
 
