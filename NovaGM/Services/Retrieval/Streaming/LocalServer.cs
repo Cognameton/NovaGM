@@ -114,8 +114,45 @@ textarea{{flex:1;min-height:3em;}}
 const log = document.getElementById('log');
 const msg = document.getElementById('msg');
 const send = document.getElementById('send');
+
+// Load conversation history first
+async function loadHistory() {{
+  try {{
+    const response = await fetch('/history');
+    if (response.ok) {{
+      const history = await response.json();
+      // Clear any existing content
+      log.textContent = '';
+      // Add each message to the log
+      history.forEach(message => {{
+        if (message.content && message.content.trim()) {{
+          log.textContent += `${{message.role}}: ${{message.content}}\\n`;
+        }}
+      }});
+      // Scroll to bottom
+      log.scrollTop = log.scrollHeight;
+    }}
+  }} catch (e) {{
+    console.error('Failed to load history:', e);
+    // Continue with just the stream if history fails
+  }}
+}}
+
+// Load history when page loads
+loadHistory();
+
+// Then start streaming new messages
 const es = new EventSource('/stream');
-es.onmessage = (e) => {{ log.textContent += e.data; log.scrollTop = log.scrollHeight; }};
+es.onmessage = (e) => {{ 
+  log.textContent += e.data; 
+  log.scrollTop = log.scrollHeight; 
+}};
+
+// Handle connection errors and reconnection
+es.onerror = () => {{
+  console.log('Stream disconnected, will reconnect automatically');
+}};
+
 send.onclick = async () => {{
   const text = msg.value.trim();
   if(!text) return;
@@ -126,6 +163,14 @@ send.onclick = async () => {{
     body: JSON.stringify({{ code: '{codeJs}', name: '{nameJs}', text }})
   }});
 }};
+
+// Add enter key support for sending messages
+msg.addEventListener('keypress', (e) => {{
+  if (e.key === 'Enter' && !e.shiftKey) {{
+    e.preventDefault();
+    send.click();
+  }}
+}});
 </script>
 </body></html>");
                                });
