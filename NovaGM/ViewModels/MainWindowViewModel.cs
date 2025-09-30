@@ -738,7 +738,7 @@ namespace NovaGM.ViewModels
         {
             var message = new Message(role, content);
             Messages.Add(message);
-            MessageHistoryService.AddMessage(message);
+            MessageHistoryService.AddMessage(new Models.Message(role, content));
         }
             
         private static string GetLocalIp()
