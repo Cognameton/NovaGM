@@ -1,0 +1,152 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:NovaGM.ViewModels"
+        xmlns:views="clr-namespace:NovaGM.Views"
+        x:Class="NovaGM.Views.PlayerManagementWindow"
+        Title="Player Management"
+        Width="800" Height="600"
+        WindowStartupLocation="CenterOwner">
+
+  <Grid Margin="20">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- Title -->
+    <TextBlock Grid.Row="0" Text="Connected Players" 
+               FontSize="18" FontWeight="Bold" 
+               HorizontalAlignment="Center" 
+               Margin="0,0,0,20"/>
+
+    <!-- Player List -->
+    <Grid Grid.Row="1" ColumnDefinitions="300,*">
+      
+      <!-- Players List -->
+      <Border Grid.Column="0" 
+              BorderBrush="Gray" 
+              BorderThickness="1" 
+              CornerRadius="5" 
+              Padding="10"
+              Margin="0,0,10,0">
+        <StackPanel>
+          <TextBlock Text="Players:" FontWeight="SemiBold" Margin="0,0,0,10"/>
+          <ListBox x:Name="PlayersListBox" SelectionChanged="OnPlayerSelected">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="views:PlayerInfo">
+                <Border Background="{DynamicResource Brush.Surface}"
+                        CornerRadius="5"
+                        Padding="10"
+                        Margin="0,2">
+                  <StackPanel>
+                    <TextBlock Text="{Binding Name}" 
+                               FontWeight="SemiBold" 
+                               FontSize="14"/>
+                    <TextBlock Text="{Binding Status}" 
+                               FontSize="11" 
+                               Foreground="Gray"/>
+                    <TextBlock Text="{Binding CharacterSummary}" 
+                               FontSize="10" 
+                               Foreground="DarkBlue"
+                               Margin="0,2,0,0"/>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          
+          <!-- Player Actions -->
+          <StackPanel Margin="0,15,0,0" Spacing="5">
+            <Button x:Name="ViewCharacterButton" 
+                    Content="View Character Sheet" 
+                    IsEnabled="{Binding SelectedPlayer, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Click="OnViewCharacterClick"/>
+            <Button x:Name="KickPlayerButton" 
+                    Content="Kick Player" 
+                    IsEnabled="{Binding SelectedPlayer, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Click="OnKickPlayerClick"
+                    Classes="danger"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- Character Sheet Preview -->
+      <Border Grid.Column="1" 
+              BorderBrush="Gray" 
+              BorderThickness="1" 
+              CornerRadius="5" 
+              Padding="15">
+        <ScrollViewer>
+          <StackPanel x:Name="CharacterSheetPanel">
+            <TextBlock Text="Select a player to view their character sheet" 
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontStyle="Italic"
+                       Foreground="Gray"
+                       x:Name="NoSelectionMessage"/>
+            
+            <!-- Character Sheet Content (populated dynamically) -->
+            <StackPanel x:Name="CharacterSheetContent" IsVisible="False">
+              <TextBlock Text="Character Sheet" FontSize="16" FontWeight="Bold" Margin="0,0,0,15"/>
+              
+              <!-- Basic Info -->
+              <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,0,0,15">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Name:" FontWeight="SemiBold" Margin="0,0,10,5"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" x:Name="CharacterName" Margin="0,0,0,5"/>
+                
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Race:" FontWeight="SemiBold" Margin="0,0,10,5"/>
+                <TextBlock Grid.Row="1" Grid.Column="1" x:Name="CharacterRace" Margin="0,0,0,5"/>
+                
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Class:" FontWeight="SemiBold" Margin="0,0,10,5"/>
+                <TextBlock Grid.Row="2" Grid.Column="1" x:Name="CharacterClass" Margin="0,0,0,5"/>
+                
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Level:" FontWeight="SemiBold" Margin="0,0,10,5"/>
+                <TextBlock Grid.Row="3" Grid.Column="1" x:Name="CharacterLevel" Margin="0,0,0,5"/>
+              </Grid>
+
+              <!-- Ability Scores -->
+              <TextBlock Text="Ability Scores" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,10"/>
+              <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" Margin="0,0,0,15">
+                <StackPanel Grid.Column="0" Grid.Row="0" Margin="0,0,10,10">
+                  <TextBlock Text="STR" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                  <TextBlock x:Name="CharacterSTR" HorizontalAlignment="Center" FontSize="18" FontWeight="Bold"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Grid.Row="0" Margin="0,0,10,10">
+                  <TextBlock Text="DEX" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                  <TextBlock x:Name="CharacterDEX" HorizontalAlignment="Center" FontSize="18" FontWeight="Bold"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Grid.Row="0" Margin="0,0,0,10">
+                  <TextBlock Text="CON" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                  <TextBlock x:Name="CharacterCON" HorizontalAlignment="Center" FontSize="18" FontWeight="Bold"/>
+                </StackPanel>
+                
+                <StackPanel Grid.Column="0" Grid.Row="1" Margin="0,0,10,0">
+                  <TextBlock Text="INT" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                  <TextBlock x:Name="CharacterINT" HorizontalAlignment="Center" FontSize="18" FontWeight="Bold"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Grid.Row="1" Margin="0,0,10,0">
+                  <TextBlock Text="WIS" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                  <TextBlock x:Name="CharacterWIS" HorizontalAlignment="Center" FontSize="18" FontWeight="Bold"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Grid.Row="1" Margin="0,0,0,0">
+                  <TextBlock Text="CHA" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                  <TextBlock x:Name="CharacterCHA" HorizontalAlignment="Center" FontSize="18" FontWeight="Bold"/>
+                </StackPanel>
+              </Grid>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+
+    <!-- Close Button -->
+    <Button Grid.Row="2" 
+            Content="Close" 
+            HorizontalAlignment="Right" 
+            MinWidth="80"
+            Margin="0,20,0,0"
+            Click="OnCloseClick"/>
+
+  </Grid>
+</Window>
