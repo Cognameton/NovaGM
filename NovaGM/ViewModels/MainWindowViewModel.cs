@@ -369,6 +369,8 @@ namespace NovaGM.ViewModels
                         if (!string.IsNullOrEmpty(final) && !aiGmResponse.Content.Equals(final))
                             aiGmResponse.Content = final;
                         broadcaster.Publish("\n");
+                        // Add completed AI response to history
+                        MessageHistoryService.AddMessage(new Models.Message("GM", aiGmResponse.Content));
                     });
                 }
                 else
