@@ -14,9 +14,9 @@ Given the player's latest action and brief game facts, you return a JSON ""beat"
 - 2–4 suggested follow-up actions the player might try next.
 
 IMPORTANT: Adapt to the genre and setting the player establishes. If they mention:
-- Fantasy elements (magic, dragons, kingdoms) → respond with fantasy elements
-- Sci-Fi elements (space, starships, planets, technology) → respond with sci-fi elements  
-- Horror elements (suspense, supernatural, dark themes) → respond with horror/contemporary elements
+- Space, starships, planets, moons → respond with sci-fi elements
+- Magic, dragons, kingdoms → respond with fantasy elements  
+- Modern cities, technology → respond with contemporary elements
 Always maintain consistency with the established setting and tone.
 
 Return ONLY JSON that matches the schema.";
