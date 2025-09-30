@@ -652,7 +652,7 @@ namespace NovaGM.ViewModels
             // Show countdown window
             if (ownerWindow != null)
             {
-                countdownWindow.ShowDialog(ownerWindow);
+                _ = countdownWindow.ShowDialog(ownerWindow);
                 await Task.Run(() =>
                 {
                     while (countdownWindow.IsVisible)
