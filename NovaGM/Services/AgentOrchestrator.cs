@@ -115,6 +115,27 @@ namespace NovaGM.Services
             if (string.IsNullOrWhiteSpace(prose))
                 prose = "Silence lingers. 1) Call out 2) Advance 3) Wait.<EOT>";
 
+            // Content guard: Check for unwanted ideological commentary
+            if (Prompts.NarrationGuards.ViolatesPolicy(prose))
+            {
+                // First attempt: regenerate once with same inputs
+                prose = await AskSafeAsync(
+                    _narrator,
+                    Prompts.NarratorSystem,
+                    Prompts.NarratorUser(JsonSerializer.Serialize(beat, _json), facts, _state.CompactSlice()),
+                    narrCts.Token,
+                    expectJson: false,
+                    onToken: onNarratorToken
+                );
+
+                // If it still violates policy, use neutral fallback
+                if (Prompts.NarrationGuards.ViolatesPolicy(prose))
+                {
+                    var currentLocation = _state.Load().CurrentLocation ?? "";
+                    prose = Prompts.NarrationGuards.GetNeutralFallback(currentLocation) + "<EOT>";
+                }
+            }
+
             // MEMORY → new facts
             using var memoCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
             memoCts.CancelAfter(TimeSpan.FromSeconds(6));
