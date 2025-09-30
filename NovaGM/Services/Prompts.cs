@@ -112,11 +112,7 @@ public static class NarrationGuards
     private static readonly string[] Banned = new[]
     {
         "diversity", "equity", "inclusion", "dei",
-        "representation", "identity politics", "social justice",
-        "ally", "allyship", "marginalized", "oppression",
-        "patriarchy", "colonialism", "privilege",
-        "pride flag", "flags of identity", "waving flags of",
-        "diverse crew", "representation of", "pride in representing"
+        "diverse crew", "diverse characters"
     };
 
     public static bool ViolatesPolicy(string text)
