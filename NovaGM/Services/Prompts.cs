@@ -169,7 +169,7 @@ public static class NarrationGuards
             cleaned.EndsWith(" the", StringComparison.OrdinalIgnoreCase) ||
             cleaned.EndsWith(" a", StringComparison.OrdinalIgnoreCase) ||
             cleaned.EndsWith(" an", StringComparison.OrdinalIgnoreCase) ||
-            cleaned.Contains("etched with", StringComparison.OrdinalIgnoreCase) && !cleaned.Contains(".", cleaned.LastIndexOf("etched with", StringComparison.OrdinalIgnoreCase)))
+            cleaned.Contains("etched with", StringComparison.OrdinalIgnoreCase) && !cleaned.Substring(cleaned.LastIndexOf("etched with", StringComparison.OrdinalIgnoreCase)).Contains(".")))
         {
             return true;
         }
