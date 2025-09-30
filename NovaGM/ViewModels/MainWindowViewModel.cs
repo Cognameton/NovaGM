@@ -341,26 +341,26 @@ namespace NovaGM.ViewModels
                     broadcaster.Publish($"GM: {text}\n");
 
                     // Process the GM's prompt through the AI as a narrative instruction
-                    var gmResponse = new Message("AI Response", "");
-                    Dispatcher.UIThread.Post(() => Messages.Add(gmResponse));
+                    var aiGmResponse = new Message("GM", "");
+                    Dispatcher.UIThread.Post(() => Messages.Add(aiGmResponse));
 
-                    // Broadcast AI response indicator
-                    broadcaster.Publish("AI Response: ");
+                    // Broadcast AI-GM response indicator
+                    broadcaster.Publish("GM: ");
 
                     string final = await _agent.RunTurnAsync(
                         $"GM instruction: {text}",
                         default,
                         onNarratorToken: chunk =>
                         {
-                            Dispatcher.UIThread.Post(() => gmResponse.Append(chunk));
+                            Dispatcher.UIThread.Post(() => aiGmResponse.Append(chunk));
                             broadcaster.Publish(chunk);
                         }
                     );
 
                     Dispatcher.UIThread.Post(() =>
                     {
-                        if (!string.IsNullOrEmpty(final) && !gmResponse.Content.Equals(final))
-                            gmResponse.Content = final;
+                        if (!string.IsNullOrEmpty(final) && !aiGmResponse.Content.Equals(final))
+                            aiGmResponse.Content = final;
                         broadcaster.Publish("\n");
                     });
                 }
