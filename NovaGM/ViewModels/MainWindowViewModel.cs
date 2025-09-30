@@ -76,14 +76,6 @@ namespace NovaGM.ViewModels
             };
             CharacterSheet = new CharacterSheetViewModel(c);
 
-            // Helper method to add messages to both local collection and history service
-            void AddMessage(string role, string content)
-            {
-                var message = new Message(role, content);
-                Messages.Add(message);
-                MessageHistoryService.AddMessage(message);
-            }
-
             // Minimal compendium placeholders
             Compendium.Add(new CompendiumEntry { Category = "Race",   Name = "Human",      Description = "Versatile and adaptable." });
             Compendium.Add(new CompendiumEntry { Category = "Race",   Name = "Elf",        Description = "Graceful, keen senses." });
