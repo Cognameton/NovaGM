@@ -368,6 +368,21 @@ namespace NovaGM.ViewModels
             finally { _turnLock.Release(); }
         }
 
+        private async Task HandleGMMessageAsync(string text, LocalBroadcaster broadcaster)
+        {
+            await _turnLock.WaitAsync();
+            try
+            {
+                // Add GM message to local display
+                var gmMessage = new Message("GM", text);
+                Dispatcher.UIThread.Post(() => Messages.Add(gmMessage));
+
+                // Broadcast GM message to all connected players
+                broadcaster.Publish($"GM: {text}\n");
+            }
+            finally { _turnLock.Release(); }
+        }
+
         private string GenerateSessionSummary()
         {
             var recentMessages = Messages.TakeLast(10).Where(m => m.Role == "GM").ToList();
