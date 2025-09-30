@@ -508,7 +508,9 @@ namespace NovaGM.ViewModels
                 
                 if (ownerWindow != null)
                 {
-                    _ = exitDialog.ShowDialog(ownerWindow);
+#pragma warning disable CS4014
+                    exitDialog.ShowDialog(ownerWindow);
+#pragma warning restore CS4014
                     // Wait for dialog to complete
                     await Task.Run(() =>
                     {
