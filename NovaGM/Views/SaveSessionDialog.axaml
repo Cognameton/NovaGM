@@ -1,0 +1,53 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="NovaGM.Views.SaveSessionDialog"
+        Title="Save Session"
+        Width="450" Height="200"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+  <Grid Margin="20">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- Icon and Title -->
+    <StackPanel Grid.Row="0" 
+                Orientation="Horizontal" 
+                HorizontalAlignment="Center"
+                Margin="0,0,0,20">
+      <TextBlock Text="💾" FontSize="24" Margin="0,0,10,0"/>
+      <TextBlock Text="Save Current Session" 
+                 FontSize="16" 
+                 FontWeight="Bold"
+                 VerticalAlignment="Center"/>
+    </StackPanel>
+
+    <!-- Message -->
+    <TextBlock Grid.Row="1" 
+               Text="Would you like to save the current session before exiting NovaGM?" 
+               FontSize="14"
+               TextAlignment="Center"
+               TextWrapping="Wrap"
+               VerticalAlignment="Center"/>
+
+    <!-- Buttons -->
+    <StackPanel Grid.Row="2" 
+                Orientation="Horizontal" 
+                HorizontalAlignment="Center" 
+                Spacing="15">
+      <Button x:Name="NoButton" 
+              Content="No" 
+              MinWidth="80"
+              Click="OnNoClick"/>
+      <Button x:Name="YesButton" 
+              Content="Yes" 
+              MinWidth="80"
+              Classes="accent"
+              Click="OnYesClick"/>
+    </StackPanel>
+
+  </Grid>
+</Window>
