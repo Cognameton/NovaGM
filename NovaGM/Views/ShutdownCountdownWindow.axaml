@@ -1,0 +1,82 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="NovaGM.Views.ShutdownCountdownWindow"
+        Title="NovaGM Shutting Down"
+        Width="500" Height="300"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+  <Grid Margin="30">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- Title -->
+    <StackPanel Grid.Row="0" 
+                Orientation="Horizontal" 
+                HorizontalAlignment="Center"
+                Margin="0,0,0,20">
+      <TextBlock Text="🔄" FontSize="32" Margin="0,0,15,0"/>
+      <TextBlock Text="NovaGM Shutting Down" 
+                 FontSize="20" 
+                 FontWeight="Bold"
+                 VerticalAlignment="Center"/>
+    </StackPanel>
+
+    <!-- Countdown Display -->
+    <Border Grid.Row="1" 
+            Background="{DynamicResource Brush.SurfaceAlt}" 
+            CornerRadius="10" 
+            Padding="20"
+            Margin="0,0,0,20">
+      <StackPanel HorizontalAlignment="Center">
+        <TextBlock x:Name="CountdownText" 
+                   Text="60" 
+                   FontSize="48" 
+                   FontWeight="Bold"
+                   HorizontalAlignment="Center"/>
+        <TextBlock Text="seconds remaining" 
+                   FontSize="14" 
+                   HorizontalAlignment="Center"
+                   Foreground="Gray"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Shutdown Status -->
+    <ScrollViewer Grid.Row="2" 
+                  BorderBrush="Gray" 
+                  BorderThickness="1" 
+                  CornerRadius="5" 
+                  Padding="10"
+                  Margin="0,0,0,20">
+      <StackPanel x:Name="StatusPanel">
+        <TextBlock Text="Shutdown Status:" 
+                   FontWeight="Bold" 
+                   Margin="0,0,0,10"/>
+        <!-- Status items will be added dynamically -->
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- Progress Bar -->
+    <ProgressBar Grid.Row="3" 
+                 x:Name="ShutdownProgress"
+                 Height="8"
+                 Minimum="0"
+                 Maximum="60"
+                 Value="0"
+                 Margin="0,0,0,15"/>
+
+    <!-- Cancel Button -->
+    <Button Grid.Row="4" 
+            x:Name="CancelButton"
+            Content="Cancel Shutdown" 
+            HorizontalAlignment="Center"
+            MinWidth="120"
+            Click="OnCancelClick"/>
+
+  </Grid>
+</Window>
