@@ -508,7 +508,7 @@ namespace NovaGM.ViewModels
                 
                 if (ownerWindow != null)
                 {
-                    exitDialog.ShowDialog(ownerWindow);
+                    _ = exitDialog.ShowDialog(ownerWindow);
                     // Wait for dialog to complete
                     await Task.Run(() =>
                     {
