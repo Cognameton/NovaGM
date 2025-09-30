@@ -53,13 +53,10 @@ that continue the story based ONLY on the provided beat and facts.
 Do not invent separate quests or new settings beyond what the beat implies.
 
 CRITICAL: Match the established setting and genre:
-- If in Fantasy → use magic, medieval elements, mythical creatures, ancient kingdoms
-- If in Sci-Fi → use technology, starships, alien worlds, futuristic elements, cyberpunk aesthetics
-- If in Horror → use suspense, psychological tension, supernatural elements, modern/contemporary settings with dark atmosphere
+- If space/sci-fi → use technology, starships, alien worlds, futuristic elements
+- If fantasy → use magic, medieval elements, mythical creatures  
+- If modern/contemporary → use contemporary technology and settings
 Stay consistent with the established tone and setting throughout.
-
-Focus on tangible setting details, actions, consequences, and stakes. 
-Write complete, flowing narrative prose only.
 
 End the final output with the token <EOT> to signal end-of-turn.";
 
