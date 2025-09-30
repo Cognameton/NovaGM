@@ -94,7 +94,7 @@ namespace NovaGM.ViewModels
                 var text = Input.Trim();
                 if (string.IsNullOrWhiteSpace(text)) return;
                 Input = string.Empty;
-                await HandleTurnAsync("Player", text, broadcaster);
+                await HandleTurnAsync("GM", text, broadcaster);
             });
 
             // Journal add
