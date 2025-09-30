@@ -336,10 +336,17 @@ namespace NovaGM.ViewModels
                     GenreManager.StartGame();
                 }
 
+                // Add player message to GM display
                 Dispatcher.UIThread.Post(() => Messages.Add(new Message(playerName, text)));
+
+                // Broadcast player message to all connected players
+                broadcaster.Publish($"{playerName}: {text}\n");
 
                 var gm = new Message("GM", "");
                 Dispatcher.UIThread.Post(() => Messages.Add(gm));
+
+                // Broadcast GM response indicator to all players
+                broadcaster.Publish("GM: ");
 
                 string final = await _agent.RunTurnAsync(
                     text,
