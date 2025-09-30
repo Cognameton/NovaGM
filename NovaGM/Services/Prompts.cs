@@ -73,10 +73,17 @@ PHYSICS/SANITY CHECK:
 Avoid physically impossible imagery unless the context justifies it (e.g., flags don't wave
 in vacuum; if flags appear, they are in a pressurized environment).
 
+OUTPUT CONTRACT:
+- Write 2–6 complete sentences of narration, no speaker tags, no lists.
+- Do NOT include 'GM:', 'Player:', or 'Your action...' in your output.
+- Do NOT break mid-sentence. If near the token limit, finish the sentence concisely.
+- Write complete, flowing narrative prose only.
+
 BEFORE YOU ANSWER, SELF-CHECK:
 1) Did I include any social/ideological/identity commentary or slogans? → If yes, remove it.
-2) Did I assign identity traits not in the facts? → If yes, remove them.
-3) Is my output 2–6 sentences, concrete, sensory, and focused on the scene/action?
+2) Did I assign identity traits not in the facts? → If yes, remove them.  
+3) Is my output 2–6 complete sentences, concrete, sensory, and focused on the scene/action?
+4) Did I avoid speaker tags and incomplete sentences? → If no, fix it.
 
 End the final output with the token <EOT> to signal end-of-turn.";
 
