@@ -407,6 +407,8 @@ namespace NovaGM.ViewModels
                         if (!string.IsNullOrEmpty(final) && !gm.Content.Equals(final))
                             gm.Content = final;
                         broadcaster.Publish("\n");
+                        // Add completed GM response to history
+                        MessageHistoryService.AddMessage(new Models.Message("GM", gm.Content));
                     });
                 }
             }
