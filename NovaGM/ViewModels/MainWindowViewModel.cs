@@ -498,6 +498,154 @@ namespace NovaGM.ViewModels
             }
         }
 
+        private async Task HandleExitSequenceAsync()
+        {
+            try
+            {
+                // Step 1: Exit confirmation dialog
+                var exitDialog = new ExitConfirmationDialog();
+                var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
+                if (ownerWindow != null)
+                {
+                    await exitDialog.ShowDialog(ownerWindow);
+                }
+                else
+                {
+                    exitDialog.Show();
+                    // Wait for dialog to close in a simple way
+                    while (exitDialog.IsVisible)
+                    {
+                        await Task.Delay(100);
+                    }
+                }
+
+                if (exitDialog.Result != true)
+                {
+                    return; // User cancelled exit
+                }
+
+                // Step 2: Save session dialog
+                var saveDialog = new SaveSessionDialog();
+                if (ownerWindow != null)
+                {
+                    await saveDialog.ShowDialog(ownerWindow);
+                }
+                else
+                {
+                    saveDialog.Show();
+                    while (saveDialog.IsVisible)
+                    {
+                        await Task.Delay(100);
+                    }
+                }
+
+                if (saveDialog.Result == true)
+                {
+                    // Save the session
+                    await SaveCurrentSessionAsync();
+                }
+
+                // Step 3: Show shutdown countdown and perform safe shutdown
+                await PerformSafeShutdownAsync();
+            }
+            catch (Exception ex)
+            {
+                Messages.Add(new Message("GM", $"Error during exit sequence: {ex.Message}"));
+                // Fall back to hard exit if something goes wrong
+                ShutdownUtil.HardExit();
+            }
+        }
+
+        private async Task SaveCurrentSessionAsync()
+        {
+            try
+            {
+                var sessionSummary = GenerateSessionSummary();
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+                var sessionData = $"[Session {timestamp}] {sessionSummary}";
+                
+                JournalEntries.Add(sessionData);
+                Messages.Add(new Message("GM", "Session saved to journal successfully."));
+                
+                // Give UI time to update
+                await Task.Delay(500);
+            }
+            catch (Exception ex)
+            {
+                Messages.Add(new Message("GM", $"Failed to save session: {ex.Message}"));
+            }
+        }
+
+        private async Task PerformSafeShutdownAsync()
+        {
+            var countdownWindow = new ShutdownCountdownWindow();
+            var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
+            
+            // Start the shutdown process in the background
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(1000); // Give UI time to show
+                
+                // Step 1: Stop accepting new connections
+                countdownWindow.AddStatusMessage("Stopping new player connections...");
+                GameCoordinator.Instance.Cancel();
+                await Task.Delay(2000);
+
+                // Step 2: Notify connected players
+                countdownWindow.AddStatusMessage("Notifying connected players...");
+                var broadcaster = LocalBroadcaster.Instance;
+                broadcaster.Publish("\n\n🔴 GM: The game session is ending. Thank you for playing!\n\n");
+                await Task.Delay(3000);
+
+                // Step 3: Stop local server
+                countdownWindow.AddStatusMessage("Shutting down local server...");
+                ServicesHost.Stop();
+                await Task.Delay(2000);
+
+                // Step 4: Complete broadcasting
+                countdownWindow.AddStatusMessage("Closing player connections...");
+                broadcaster.Complete();
+                await Task.Delay(2000);
+
+                // Step 5: Clean up LLM and other resources
+                countdownWindow.AddStatusMessage("Releasing LLM resources...");
+                await Task.Delay(3000); // Give time for LLM cleanup
+
+                // Step 6: Final cleanup
+                countdownWindow.AddStatusMessage("Performing final cleanup...");
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                await Task.Delay(2000);
+
+                countdownWindow.AddStatusMessage("Shutdown complete. NovaGM will now exit.");
+                await Task.Delay(1000);
+            });
+
+            // Show countdown window
+            if (ownerWindow != null)
+            {
+                await countdownWindow.ShowDialog(ownerWindow);
+            }
+            else
+            {
+                countdownWindow.Show();
+                while (countdownWindow.IsVisible)
+                {
+                    await Task.Delay(100);
+                }
+            }
+
+            if (countdownWindow.WasCancelled)
+            {
+                // User cancelled shutdown
+                Messages.Add(new Message("GM", "Shutdown cancelled. Game session resumed."));
+                return;
+            }
+
+            // Proceed with final shutdown
+            await ShutdownUtil.RequestAsync();
+        }
+
         public event PropertyChangedEventHandler? PropertyChanged;
         private void OnPropertyChanged([CallerMemberName] string? name = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
