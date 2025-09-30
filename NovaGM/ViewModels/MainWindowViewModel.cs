@@ -57,6 +57,9 @@ namespace NovaGM.ViewModels
 
         public MainWindowViewModel()
         {
+            // Clear any existing history when starting new session
+            MessageHistoryService.ClearHistory();
+            
             // Seed example character (placeholder to light up UI)
             var c = new Character
             {
