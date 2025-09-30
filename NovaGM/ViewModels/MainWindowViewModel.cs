@@ -607,53 +607,70 @@ namespace NovaGM.ViewModels
             {
                 await Task.Delay(1000); // Give UI time to show
                 
-                // Step 1: Stop accepting new connections
-                countdownWindow.AddStatusMessage("Stopping new player connections...");
-                GameCoordinator.Instance.Cancel();
-                await Task.Delay(2000);
+                try
+                {
+                    // Step 1: Stop accepting new connections
+                    countdownWindow.AddStatusMessage("Stopping new player connections...");
+                    GameCoordinator.Instance.Cancel();
+                    await Task.Delay(2000);
 
-                // Step 2: Notify connected players
-                countdownWindow.AddStatusMessage("Notifying connected players...");
-                var broadcaster = LocalBroadcaster.Instance;
-                broadcaster.Publish("\n\n🔴 GM: The game session is ending. Thank you for playing!\n\n");
-                await Task.Delay(3000);
+                    // Step 2: Notify connected players
+                    countdownWindow.AddStatusMessage("Notifying connected players...");
+                    var broadcaster = LocalBroadcaster.Instance;
+                    broadcaster.Publish("\n\n🔴 GM: The game session is ending. Thank you for playing!\n\n");
+                    await Task.Delay(3000);
 
-                // Step 3: Stop local server
-                countdownWindow.AddStatusMessage("Shutting down local server...");
-                ServicesHost.Stop();
-                await Task.Delay(2000);
+                    // Step 3: Stop local server
+                    countdownWindow.AddStatusMessage("Shutting down local server...");
+                    ServicesHost.Stop();
+                    await Task.Delay(2000);
 
-                // Step 4: Complete broadcasting
-                countdownWindow.AddStatusMessage("Closing player connections...");
-                broadcaster.Complete();
-                await Task.Delay(2000);
+                    // Step 4: Complete broadcasting
+                    countdownWindow.AddStatusMessage("Closing player connections...");
+                    broadcaster.Complete();
+                    await Task.Delay(2000);
 
-                // Step 5: Clean up LLM and other resources
-                countdownWindow.AddStatusMessage("Releasing LLM resources...");
-                await Task.Delay(3000); // Give time for LLM cleanup
+                    // Step 5: Clean up LLM and other resources
+                    countdownWindow.AddStatusMessage("Releasing LLM resources...");
+                    await Task.Delay(3000); // Give time for LLM cleanup
 
-                // Step 6: Final cleanup
-                countdownWindow.AddStatusMessage("Performing final cleanup...");
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-                await Task.Delay(2000);
+                    // Step 6: Final cleanup
+                    countdownWindow.AddStatusMessage("Performing final cleanup...");
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    await Task.Delay(2000);
 
-                countdownWindow.AddStatusMessage("Shutdown complete. NovaGM will now exit.");
-                await Task.Delay(1000);
+                    countdownWindow.AddStatusMessage("Shutdown complete. NovaGM will now exit.");
+                    await Task.Delay(1000);
+                }
+                catch (Exception ex)
+                {
+                    countdownWindow.AddStatusMessage($"Error during shutdown: {ex.Message}");
+                }
             });
 
             // Show countdown window
             if (ownerWindow != null)
             {
-                await countdownWindow.ShowDialog(ownerWindow);
+                countdownWindow.ShowDialog(ownerWindow);
+                await Task.Run(() =>
+                {
+                    while (countdownWindow.IsVisible)
+                    {
+                        Thread.Sleep(50);
+                    }
+                });
             }
             else
             {
                 countdownWindow.Show();
-                while (countdownWindow.IsVisible)
+                await Task.Run(() =>
                 {
-                    await Task.Delay(100);
-                }
+                    while (countdownWindow.IsVisible)
+                    {
+                        Thread.Sleep(50);
+                    }
+                });
             }
 
             if (countdownWindow.WasCancelled)
