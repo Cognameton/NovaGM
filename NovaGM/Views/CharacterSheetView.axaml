@@ -17,74 +17,84 @@
             CornerRadius="{DynamicResource Radius.MD}"
             Background="{DynamicResource Brush.SurfaceAlt}"
             Padding="10">
-      <Grid ColumnDefinitions="*,*,*"
-            RowDefinitions="Auto,*,Auto,Auto,Auto,*,Auto">
+      <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="0,4,0,0">
 
-        <!-- Top row: Head/Neck/Cloak -->
-        <StackPanel Grid.Row="0" Grid.Column="1"
+        <!-- Head / Neck / Cloak -->
+        <StackPanel Grid.Row="0"
                     Orientation="Horizontal"
                     HorizontalAlignment="Center"
-                    Spacing="8">
+                    Spacing="12"
+                    Margin="0,0,0,12">
           <Button Content="{Binding Head}" MinWidth="96"/>
           <Button Content="{Binding Neck}" MinWidth="96"/>
           <Button Content="{Binding Cloak}" MinWidth="96"/>
         </StackPanel>
 
-        <!-- Silhouette box -->
-        <Border Grid.Row="1" Grid.Column="1"
-                MinHeight="260"
-                CornerRadius="12"
-                Background="#151922"
-                BorderBrush="#2B3448"
-                BorderThickness="1"
-                VerticalAlignment="Stretch"
-                HorizontalAlignment="Stretch">
-          <TextBlock Text="Humanoid"
-                     HorizontalAlignment="Center"
-                     VerticalAlignment="Center"
-                     Foreground="{DynamicResource Brush.Muted}" />
-        </Border>
+        <!-- Core silhouette band with adjacent slots -->
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto"
+              VerticalAlignment="Stretch"
+              Margin="0,0,0,16">
 
-        <!-- Mid rows: chest/hands/belt/legs/feet -->
-        <StackPanel Grid.Row="2" Grid.Column="0"
-                    Orientation="Vertical"
-                    Spacing="6"
-                    HorizontalAlignment="Left">
-          <Button Content="{Binding Chest}" MinWidth="120"/>
-          <Button Content="{Binding Hands}" MinWidth="120"/>
-        </StackPanel>
+          <StackPanel Grid.Column="0"
+                      Orientation="Vertical"
+                      VerticalAlignment="Center"
+                      Spacing="10"
+                      Margin="0,0,12,0">
+            <Button Content="{Binding Chest}" MinWidth="120"/>
+            <Button Content="{Binding Hands}" MinWidth="120"/>
+          </StackPanel>
 
-        <StackPanel Grid.Row="2" Grid.Column="2"
-                    Orientation="Vertical"
-                    Spacing="6"
-                    HorizontalAlignment="Right">
-          <Button Content="{Binding Belt}" MinWidth="120"/>
-          <Button Content="{Binding Legs}" MinWidth="120"/>
-        </StackPanel>
+          <Border Grid.Column="1"
+                  MinHeight="260"
+                  CornerRadius="12"
+                  Background="#151922"
+                  BorderBrush="#2B3448"
+                  BorderThickness="1"
+                  Margin="0"
+                  VerticalAlignment="Center"
+                  HorizontalAlignment="Stretch">
+            <TextBlock Text="Humanoid"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource Brush.Muted}" />
+          </Border>
 
-        <StackPanel Grid.Row="3" Grid.Column="1"
+          <StackPanel Grid.Column="2"
+                      Orientation="Vertical"
+                      VerticalAlignment="Center"
+                      Spacing="10"
+                      Margin="12,0,0,0">
+            <Button Content="{Binding Belt}" MinWidth="120"/>
+            <Button Content="{Binding Legs}" MinWidth="120"/>
+          </StackPanel>
+        </Grid>
+
+        <!-- Feet slot -->
+        <StackPanel Grid.Row="2"
                     Orientation="Horizontal"
-                    Spacing="10"
-                    HorizontalAlignment="Center">
-          <Button Content="{Binding Feet}" MinWidth="120"/>
+                    HorizontalAlignment="Center"
+                    Margin="0,0,0,20">
+          <Button Content="{Binding Feet}" MinWidth="140"/>
         </StackPanel>
 
         <!-- Weapons & rings -->
-        <StackPanel Grid.Row="5" Grid.Column="0"
-                    Orientation="Vertical"
-                    Spacing="6"
-                    HorizontalAlignment="Left">
-          <Button Content="{Binding MainHand}" MinWidth="120"/>
-          <Button Content="{Binding Ring1}" MinWidth="120"/>
-        </StackPanel>
+        <Grid Grid.Row="3" ColumnDefinitions="*,*" HorizontalAlignment="Stretch">
+          <StackPanel Grid.Column="0"
+                      Orientation="Vertical"
+                      Spacing="10"
+                      HorizontalAlignment="Left">
+            <Button Content="{Binding MainHand}" MinWidth="120"/>
+            <Button Content="{Binding Ring1}" MinWidth="120"/>
+          </StackPanel>
 
-        <StackPanel Grid.Row="5" Grid.Column="2"
-                    Orientation="Vertical"
-                    Spacing="6"
-                    HorizontalAlignment="Right">
-          <Button Content="{Binding OffHand}" MinWidth="120"/>
-          <Button Content="{Binding Ring2}" MinWidth="120"/>
-        </StackPanel>
+          <StackPanel Grid.Column="1"
+                      Orientation="Vertical"
+                      Spacing="10"
+                      HorizontalAlignment="Right">
+            <Button Content="{Binding OffHand}" MinWidth="120"/>
+            <Button Content="{Binding Ring2}" MinWidth="120"/>
+          </StackPanel>
+        </Grid>
 
       </Grid>
     </Border>
