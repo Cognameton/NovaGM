@@ -387,10 +387,7 @@ namespace NovaGM.ViewModels
                     broadcaster.Publish($"{playerName}: {text}\n");
 
                     var gm = new Message("GM", "");
-                    Dispatcher.UIThread.Post(() => {
-                        Messages.Add(gm);
-                        MessageHistoryService.AddMessage(new Models.Message("GM", ""));
-                    });
+                    Dispatcher.UIThread.Post(() => Messages.Add(gm));
 
                     // Broadcast GM response indicator to all players
                     broadcaster.Publish("GM: ");
