@@ -656,7 +656,9 @@ namespace NovaGM.ViewModels
             // Show countdown window
             if (ownerWindow != null)
             {
-                _ = countdownWindow.ShowDialog(ownerWindow);
+#pragma warning disable CS4014
+                countdownWindow.ShowDialog(ownerWindow);
+#pragma warning restore CS4014
                 await Task.Run(() =>
                 {
                     while (countdownWindow.IsVisible)
