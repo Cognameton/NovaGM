@@ -349,7 +349,10 @@ namespace NovaGM.ViewModels
 
                     // Process the GM's prompt through the AI as a narrative instruction
                     var aiGmResponse = new Message("GM", "");
-                    Dispatcher.UIThread.Post(() => Messages.Add(aiGmResponse));
+                    Dispatcher.UIThread.Post(() => {
+                        Messages.Add(aiGmResponse);
+                        MessageHistoryService.AddMessage(aiGmResponse);
+                    });
 
                     // Broadcast AI-GM response indicator
                     broadcaster.Publish("GM: ");
