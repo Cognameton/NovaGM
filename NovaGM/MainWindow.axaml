@@ -127,7 +127,140 @@
 
       <!-- Character tab -->
       <TabItem Header="Character">
-        <views:CharacterSheetView DataContext="{Binding CharacterSheet}" />
+        <TabControl>
+          <TabItem Header="Hub Characters">
+            <Grid ColumnDefinitions="220,*" Margin="10" ColumnSpacing="10">
+              <Border Grid.Column="0"
+                      Background="{DynamicResource Brush.SurfaceAlt}"
+                      CornerRadius="{DynamicResource Radius.MD}"
+                      Padding="12">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="Characters on this hub" FontWeight="SemiBold" />
+                  <TextBlock Text="Select a character to view their sheet." FontSize="12" Foreground="{DynamicResource Brush.Muted}" />
+
+                  <ListBox ItemsSource="{Binding HubCharacters}"
+                           SelectedItem="{Binding SelectedHubCharacter, Mode=TwoWay}"
+                           MinHeight="180">
+                    <ListBox.ItemTemplate>
+                      <DataTemplate x:DataType="vm:CharacterSheetViewModel">
+                        <StackPanel Margin="4,2" Spacing="2">
+                          <TextBlock Text="{Binding Character.Name}" FontWeight="Bold" />
+                          <TextBlock Text="{Binding Header}" FontSize="11" Foreground="{DynamicResource Brush.Muted}" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+
+                  <TextBlock Text="No hub characters yet. Use the character creator to add one."
+                             FontStyle="Italic"
+                             Foreground="{DynamicResource Brush.Muted}"
+                             IsVisible="{Binding HubCharacters.Count, Converter={StaticResource ZeroToBool}}" />
+                </StackPanel>
+              </Border>
+
+              <Border Grid.Column="1"
+                      Background="{DynamicResource Brush.SurfaceAlt}"
+                      CornerRadius="{DynamicResource Radius.MD}"
+                      Padding="12">
+                <Grid>
+                  <ContentControl Content="{Binding SelectedHubCharacter}"
+                                  IsVisible="{Binding SelectedHubCharacter, Converter={StaticResource NullToBool}}">
+                    <ContentControl.ContentTemplate>
+                      <DataTemplate x:DataType="vm:CharacterSheetViewModel">
+                        <views:CharacterSheetView DataContext="{Binding}" />
+                      </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                  </ContentControl>
+
+                  <TextBlock Text="Select or create a character to view their sheet."
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"
+                             Foreground="{DynamicResource Brush.Muted}"
+                             IsVisible="{Binding SelectedHubCharacter, Converter={StaticResource NullToBoolInverted}}" />
+                </Grid>
+              </Border>
+            </Grid>
+          </TabItem>
+
+          <TabItem Header="Connected Players">
+            <Grid Margin="10">
+              <Grid IsVisible="{Binding IsRemotePlayerListVisible}">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="Players connected via browser" FontWeight="SemiBold" />
+                  <TextBlock Text="Select a player to view their character sheet." FontSize="12" Foreground="{DynamicResource Brush.Muted}" />
+
+                  <ItemsControl ItemsSource="{Binding RemotePlayers}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:RemotePlayerViewModel">
+                        <Border Background="{DynamicResource Brush.SurfaceAlt}"
+                                CornerRadius="{DynamicResource Radius.SM}"
+                                Padding="12"
+                                Margin="0,0,0,8"
+                                BorderBrush="{DynamicResource Brush.Surface}"
+                                BorderThickness="1">
+                          <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                            <StackPanel Spacing="2">
+                              <TextBlock Text="{Binding Name}" FontWeight="Bold" />
+                              <TextBlock Text="{Binding Character.Header, TargetNullValue=Waiting for character sheet...}"
+                                         FontSize="12"
+                                         Foreground="{DynamicResource Brush.Muted}" />
+                            </StackPanel>
+
+                            <Button Grid.Column="1"
+                                    Content="View"
+                                    Command="{Binding $parent[TabControl].DataContext.ShowRemotePlayerCommand}"
+                                    CommandParameter="{Binding}"
+                                    HorizontalAlignment="Right"
+                                    MinWidth="80" />
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+
+                  <TextBlock Text="No players connected yet."
+                             FontStyle="Italic"
+                             Foreground="{DynamicResource Brush.Muted}"
+                             HorizontalAlignment="Center"
+                             Margin="0,20,0,0"
+                             IsVisible="{Binding RemotePlayers.Count, Converter={StaticResource ZeroToBool}}" />
+                </StackPanel>
+              </Grid>
+
+              <Grid IsVisible="{Binding IsRemotePlayerDetailVisible}">
+                <StackPanel Spacing="12">
+                  <Button Content="Back to players"
+                          Command="{Binding BackToRemotePlayerListCommand}"
+                          HorizontalAlignment="Left"
+                          MinWidth="140" />
+
+                  <TextBlock Text="{Binding ActiveRemotePlayer.Name}"
+                             FontSize="18"
+                             FontWeight="Bold" />
+
+                  <TextBlock Text="{Binding ActiveRemotePlayer.Character.Header, TargetNullValue=Waiting for character sheet...}"
+                             Foreground="{DynamicResource Brush.Muted}" />
+
+                  <ContentControl Content="{Binding ActiveRemotePlayer.Character}"
+                                  IsVisible="{Binding ActiveRemotePlayer.Character, Converter={StaticResource NullToBool}}">
+                    <ContentControl.ContentTemplate>
+                      <DataTemplate x:DataType="vm:CharacterSheetViewModel">
+                        <views:CharacterSheetView DataContext="{Binding}" />
+                      </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                  </ContentControl>
+
+                  <TextBlock Text="Waiting for this player to submit their character sheet."
+                             FontStyle="Italic"
+                             Foreground="{DynamicResource Brush.Muted}"
+                             HorizontalAlignment="Center"
+                             Margin="0,40,0,0"
+                             IsVisible="{Binding ActiveRemotePlayer.Character, Converter={StaticResource NullToBoolInverted}}" />
+                </StackPanel>
+              </Grid>
+            </Grid>
+          </TabItem>
+        </TabControl>
       </TabItem>
 
       <!-- Journal tab -->

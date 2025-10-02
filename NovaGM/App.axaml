@@ -1,5 +1,6 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:NovaGM.Converters"
              x:Class="NovaGM.App">
 
   <Application.Resources>
@@ -7,6 +8,10 @@
       <ResourceDictionary.MergedDictionaries>
         <ResourceInclude Source="avares://NovaGM/Themes/Tokens.Base.axaml"/>
       </ResourceDictionary.MergedDictionaries>
+      <conv:NullToBoolConverter x:Key="NullToBool" />
+      <conv:NullToBoolConverter x:Key="NullToBoolInverted" WhenNull="True" />
+      <conv:ZeroToBoolConverter x:Key="ZeroToBool" />
+      <conv:ZeroToBoolConverter x:Key="NonZeroToBool" WhenZero="False" />
     </ResourceDictionary>
   </Application.Resources>
 

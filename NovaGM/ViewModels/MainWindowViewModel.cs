@@ -31,6 +31,46 @@ namespace NovaGM.ViewModels
         public ICommand SendCommand { get; }
 
         public CharacterSheetViewModel CharacterSheet { get; }
+        public ObservableCollection<CharacterSheetViewModel> HubCharacters { get; } = new();
+
+        private CharacterSheetViewModel? _selectedHubCharacter;
+        public CharacterSheetViewModel? SelectedHubCharacter
+        {
+            get => _selectedHubCharacter;
+            set
+            {
+                if (_selectedHubCharacter != value)
+                {
+                    _selectedHubCharacter = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public ObservableCollection<RemotePlayerViewModel> RemotePlayers { get; } = new();
+
+        private RemotePlayerViewModel? _activeRemotePlayer;
+        public RemotePlayerViewModel? ActiveRemotePlayer
+        {
+            get => _activeRemotePlayer;
+            private set
+            {
+                if (_activeRemotePlayer != value)
+                {
+                    _activeRemotePlayer = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(IsRemotePlayerDetailVisible));
+                    OnPropertyChanged(nameof(IsRemotePlayerListVisible));
+                }
+            }
+        }
+
+        public bool IsRemotePlayerDetailVisible => ActiveRemotePlayer is not null;
+        public bool IsRemotePlayerListVisible => !IsRemotePlayerDetailVisible;
+
+        public ICommand ShowRemotePlayerCommand { get; }
+        public ICommand BackToRemotePlayerListCommand { get; }
+
         public ObservableCollection<string> JournalEntries { get; } = new();
         public string NewJournalText { get; set; } = "";
         public ICommand AddJournalEntryCommand { get; }
@@ -78,6 +118,8 @@ namespace NovaGM.ViewModels
                 }
             };
             CharacterSheet = new CharacterSheetViewModel(c);
+            HubCharacters.Add(CharacterSheet);
+            SelectedHubCharacter = CharacterSheet;
 
             // Minimal compendium placeholders
             Compendium.Add(new CompendiumEntry { Category = "Race",   Name = "Human",      Description = "Versatile and adaptable." });
@@ -98,6 +140,21 @@ namespace NovaGM.ViewModels
                 if (string.IsNullOrWhiteSpace(text)) return;
                 Input = string.Empty;
                 await HandleTurnAsync("GM", text, broadcaster);
+            });
+
+            ShowRemotePlayerCommand = new RelayCommand(param =>
+            {
+                if (param is RemotePlayerViewModel remote)
+                {
+                    ShowRemotePlayer(remote);
+                }
+                return Task.CompletedTask;
+            });
+
+            BackToRemotePlayerListCommand = new RelayCommand(_ =>
+            {
+                ActiveRemotePlayer = null;
+                return Task.CompletedTask;
             });
 
             // Journal add
@@ -299,10 +356,16 @@ namespace NovaGM.ViewModels
                         if (!ConnectedPlayers.Contains(inp.Player))
                         {
                             ConnectedPlayers.Add(inp.Player);
+                            if (!RemotePlayers.Any(p => string.Equals(p.Name, inp.Player, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                RemotePlayers.Add(new RemotePlayerViewModel(inp.Player));
+                            }
                             Messages.Add(new Message("System", $"Player '{inp.Player}' joined the session."));
                         }
+
+                        UpdateRemotePlayerFromCoordinator(inp.Player);
                     });
-                    
+
                     await HandleTurnAsync(inp.Player, inp.Text, broadcaster);
                 }
             });
@@ -424,6 +487,26 @@ namespace NovaGM.ViewModels
                 m.Content.Length > 100 ? m.Content.Substring(0, 100) + "..." : m.Content));
             
             return summary.Length > 200 ? summary.Substring(0, 200) + "..." : summary;
+        }
+
+        private void ShowRemotePlayer(RemotePlayerViewModel remote)
+        {
+            UpdateRemotePlayerFromCoordinator(remote.Name);
+            ActiveRemotePlayer = remote;
+        }
+
+        private void UpdateRemotePlayerFromCoordinator(string playerName)
+        {
+            var remote = RemotePlayers.FirstOrDefault(p => string.Equals(p.Name, playerName, StringComparison.OrdinalIgnoreCase));
+            if (remote is null) return;
+
+            var character = GameCoordinator.Instance.GetPlayerCharacter(playerName);
+            remote.UpdateFrom(character);
+
+            if (ActiveRemotePlayer == remote)
+            {
+                OnPropertyChanged(nameof(ActiveRemotePlayer));
+            }
         }
 
         private Task LoadMissionAsync(Mission mission)
