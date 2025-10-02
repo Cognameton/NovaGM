@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading;
@@ -93,7 +94,6 @@ namespace NovaGM.Services.Streaming
                                    var code = ctx.Request.Query["code"].ToString();
                                    var nameJs = JavaScriptEncoder.Default.Encode(name);
                                    var codeJs = JavaScriptEncoder.Default.Encode(code);
-
                                    ctx.Response.ContentType = "text/html; charset=utf-8";
                                    await ctx.Response.WriteAsync($@"<!doctype html>
 <html><head><meta charset='utf-8'><title>NovaGM — {WebUtility.HtmlEncode(name)}</title>
@@ -180,147 +180,207 @@ msg.addEventListener('keypress', (e) => {{
                                {
                                    var name = ctx.Request.Query["name"].ToString();
                                    var code = ctx.Request.Query["code"].ToString();
-                                   var nameJs = JavaScriptEncoder.Default.Encode(name);
-                                   var codeJs = JavaScriptEncoder.Default.Encode(code);
 
                                    ctx.Response.ContentType = "text/html; charset=utf-8";
-                                   await ctx.Response.WriteAsync($@"<!doctype html>
-<html><head><meta charset='utf-8'><title>NovaGM — HUD ({WebUtility.HtmlEncode(name)})</title>
-<meta name=viewport content='width=device-width, initial-scale=1'/>
-<style>
-body{{font-family:sans-serif;margin:12px;}}
-.nav{{display:flex;gap:12px;margin-bottom:12px;}}
-.nav a{{text-decoration:none;padding:6px 10px;border:1px solid #ccc;border-radius:6px;}}
-.card{{border:1px solid #ddd;border-radius:8px;padding:10px;margin-bottom:12px;}}
-.row{{display:flex;gap:8px;flex-wrap:wrap}}
-.row>label{{display:flex;flex-direction:column;min-width:120px;}}
-input[type=number]{{width:70px}}
-button{{padding:6px 10px}}
-.auto-gen{{background:#f0f8ff;border:1px solid #4a90e2;border-radius:6px;padding:8px;margin-bottom:8px;}}
-.auto-gen-buttons{{display:flex;gap:6px;flex-wrap:wrap;}}
-.auto-gen button{{background:#4a90e2;color:white;border:none;border-radius:4px;padding:4px 8px;font-size:12px;}}
-</style></head>
-<body>
-  <div class='nav'>
-    <a href='#char'>Character</a>
-    <a href='#act'>Action</a>
-    <a href='/play?name={WebUtility.HtmlEncode(name)}&code={WebUtility.HtmlEncode(code)}'>Text View</a>
-  </div>
+                                   var nameLiteral = JsonSerializer.Serialize(name ?? string.Empty);
+                                   var codeLiteral = JsonSerializer.Serialize(code ?? string.Empty);
 
-  <div id='char' class='card'>
-    <h3>Character</h3>
-    
-    <div class='auto-gen'>
-      <div style='font-weight:bold;margin-bottom:4px;'>Quick Generation:</div>
-      <div class='auto-gen-buttons'>
-        <button onclick='generateCharacter(""random"")'>Random</button>
-        <button onclick='generateCharacter(""fighter"")'>Fighter</button>
-        <button onclick='generateCharacter(""rogue"")'>Rogue</button>
-        <button onclick='generateCharacter(""mage"")'>Mage</button>
-      </div>
-    </div>
-    
-    <div class='row'>
-      <label>Name<input id='pc_name'/></label>
-      <label>Race<input id='pc_race'/></label>
-      <label>Class<input id='pc_class'/></label>
-    </div>
-    <div class='row' style='margin-top:6px'>
-      <label>STR<input id='pc_str' type='number'/></label>
-      <label>DEX<input id='pc_dex' type='number'/></label>
-      <label>CON<input id='pc_con' type='number'/></label>
-      <label>INT<input id='pc_int' type='number'/></label>
-      <label>WIS<input id='pc_wis' type='number'/></label>
-      <label>CHA<input id='pc_cha' type='number'/></label>
-    </div>
-    <div style='margin-top:8px'><button id='save'>Save</button></div>
-  </div>
+                                   var html = new StringBuilder();
+                                   html.AppendLine("<!doctype html>");
+                                   html.AppendLine("<html><head><meta charset='utf-8'><title>NovaGM — HUD (" + WebUtility.HtmlEncode(name) + ")</title>");
+                                   html.AppendLine("<meta name=viewport content='width=device-width, initial-scale=1'/>");
+                                   html.AppendLine("<style>");
+                                   html.AppendLine("body{font-family:sans-serif;margin:12px;background:#f7f9fb;}");
+                                   html.AppendLine(".nav{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}");
+                                   html.AppendLine(".tab-btn{background:#eef1f7;border:1px solid #c8d0e0;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:14px;color:#274064;}");
+                                   html.AppendLine(".tab-btn.active{background:#4a90e2;color:#fff;border-color:#4a90e2;}");
+                                   html.AppendLine(".view{display:none;}");
+                                   html.AppendLine(".view.active{display:block;}");
+                                   html.AppendLine(".card{background:#fff;border:1px solid #d9e2ef;border-radius:10px;padding:12px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);}");
+                                   html.AppendLine(".row{display:flex;gap:8px;flex-wrap:wrap;}");
+                                   html.AppendLine(".row>label{display:flex;flex-direction:column;min-width:140px;font-size:13px;color:#274064;gap:4px;}");
+                                   html.AppendLine(".row input{padding:6px;border:1px solid #c8d0e0;border-radius:6px;}");
+                                   html.AppendLine("textarea{width:100%;min-height:5em;padding:8px;border:1px solid #c8d0e0;border-radius:6px;font-size:14px;font-family:inherit;}");
+                                   html.AppendLine("button{padding:6px 12px;border-radius:6px;border:1px solid #4a90e2;background:#4a90e2;color:#fff;cursor:pointer;font-size:14px;}");
+                                   html.AppendLine("button.secondary{background:#eef1f7;color:#274064;border-color:#c8d0e0;}");
+                                   html.AppendLine("button.small{padding:4px 10px;font-size:12px;}");
+                                   html.AppendLine(".auto-gen{background:#eef6ff;border:1px solid #c6dcff;border-radius:8px;padding:8px;margin-bottom:10px;}");
+                                   html.AppendLine(".auto-gen-buttons{display:flex;gap:6px;flex-wrap:wrap;}");
+                                   html.AppendLine(".auto-gen button{background:#4a90e2;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;}");
+                                   html.AppendLine(".auto-gen button:hover{opacity:0.9;}");
+                                   html.AppendLine(".sheet-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;}");
+                                   html.AppendLine(".sheet-title{font-size:20px;font-weight:600;color:#1f2d3d;}");
+                                   html.AppendLine(".sheet-meta{color:#4a5d75;font-size:13px;}");
+                                   html.AppendLine(".sheet-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:8px;margin-top:10px;}");
+                                   html.AppendLine(".sheet-stats div{background:#f0f4fb;border:1px solid #d9e2ef;border-radius:8px;padding:6px;text-align:center;}");
+                                   html.AppendLine(".sheet-stats span{display:block;font-size:11px;color:#4a5d75;}");
+                                   html.AppendLine(".sheet-stats strong{font-size:18px;color:#1f2d3d;}");
+                                   html.AppendLine(".muted{color:#60708c;font-size:12px;margin-top:12px;}");
+                                   html.AppendLine("#char-status{margin-top:8px;font-size:13px;min-height:1em;}");
+                                   html.AppendLine(".log{white-space:pre-wrap;border:1px solid #d9e2ef;padding:10px;height:55vh;overflow:auto;border-radius:10px;background:#fff;}");
+                                   html.AppendLine("</style></head>");
+                                   html.AppendLine("<body>");
+                                   html.AppendLine("  <div class='nav'>");
+                                   html.AppendLine("    <button class='tab-btn active' data-target='character'>Character</button>");
+                                   html.AppendLine("    <button class='tab-btn' data-target='action'>Action</button>");
+                                   html.AppendLine("    <button class='tab-btn' data-target='text'>Text View</button>");
+                                   html.AppendLine("  </div>");
+                                   html.AppendLine("  <section id='view-character' class='view active'>");
+                                   html.AppendLine("    <div id='char-create' class='card'>");
+                                   html.AppendLine("      <h3>Create or update your character</h3>");
+                                   html.AppendLine("      <div class='auto-gen'>");
+                                   html.AppendLine("        <div style='font-weight:bold;margin-bottom:4px;'>Quick Generation:</div>");
+                                   html.AppendLine("        <div class='auto-gen-buttons'>");
+                                   html.AppendLine("          <button onclick='generateCharacter(\"random\")'>Random</button>");
+                                   html.AppendLine("          <button onclick='generateCharacter(\"fighter\")'>Fighter</button>");
+                                   html.AppendLine("          <button onclick='generateCharacter(\"rogue\")'>Rogue</button>");
+                                   html.AppendLine("          <button onclick='generateCharacter(\"mage\")'>Mage</button>");
+                                   html.AppendLine("        </div>");
+                                   html.AppendLine("      </div>");
+                                   html.AppendLine("      <div class='row'>");
+                                   html.AppendLine("        <label>Name<input id='pc_name' autocomplete='off'/></label>");
+                                   html.AppendLine("        <label>Race<input id='pc_race' autocomplete='off'/></label>");
+                                   html.AppendLine("        <label>Class<input id='pc_class' autocomplete='off'/></label>");
+                                   html.AppendLine("        <label>Level<input id='pc_level' type='number' min='1' value='1'/></label>");
+                                   html.AppendLine("      </div>");
+                                   html.AppendLine("      <div class='row' style='margin-top:6px'>");
+                                   html.AppendLine("        <label>STR<input id='pc_str' type='number'/></label>");
+                                   html.AppendLine("        <label>DEX<input id='pc_dex' type='number'/></label>");
+                                   html.AppendLine("        <label>CON<input id='pc_con' type='number'/></label>");
+                                   html.AppendLine("        <label>INT<input id='pc_int' type='number'/></label>");
+                                   html.AppendLine("        <label>WIS<input id='pc_wis' type='number'/></label>");
+                                   html.AppendLine("        <label>CHA<input id='pc_cha' type='number'/></label>");
+                                   html.AppendLine("      </div>");
+                                   html.AppendLine("      <div style='margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;'>");
+                                   html.AppendLine("        <button id='save'>Save Character</button>");
+                                   html.AppendLine("      </div>");
+                                   html.AppendLine("      <div id='char-status'></div>");
+                                   html.AppendLine("    </div>");
+                                   html.AppendLine("    <div id='char-sheet' class='card' style='display:none;'>");
+                                   html.AppendLine("      <div class='sheet-header'>");
+                                   html.AppendLine("        <div>");
+                                   html.AppendLine("          <div class='sheet-title' id='sheet-header'>Unnamed Adventurer</div>");
+                                   html.AppendLine("          <div class='sheet-meta' id='sheet-meta'>Awaiting details</div>");
+                                   html.AppendLine("        </div>");
+                                   html.AppendLine("        <div style='display:flex;gap:6px;'>");
+                                   html.AppendLine("          <button id='refresh-char' class='small secondary'>Refresh</button>");
+                                   html.AppendLine("          <button id='edit-char' class='small secondary'>Edit</button>");
+                                   html.AppendLine("        </div>");
+                                   html.AppendLine("      </div>");
+                                   html.AppendLine("      <div class='sheet-stats'>");
+                                   html.AppendLine("        <div><span>STR</span><strong id='sheet-str'>-</strong></div>");
+                                   html.AppendLine("        <div><span>DEX</span><strong id='sheet-dex'>-</strong></div>");
+                                   html.AppendLine("        <div><span>CON</span><strong id='sheet-con'>-</strong></div>");
+                                   html.AppendLine("        <div><span>INT</span><strong id='sheet-int'>-</strong></div>");
+                                   html.AppendLine("        <div><span>WIS</span><strong id='sheet-wis'>-</strong></div>");
+                                   html.AppendLine("        <div><span>CHA</span><strong id='sheet-cha'>-</strong></div>");
+                                   html.AppendLine("      </div>");
+                                   html.AppendLine("      <p class='muted'>Inventory syncing from the host will appear here later.</p>");
+                                   html.AppendLine("    </div>");
+                                   html.AppendLine("  </section>");
+                                   html.AppendLine("  <section id='view-action' class='view'>");
+                                   html.AppendLine("    <div class='card'>");
+                                   html.AppendLine("      <h3>Action</h3>");
+                                   html.AppendLine("      <textarea id='msg' placeholder='Your action...'></textarea>");
+                                   html.AppendLine("      <div style='margin-top:6px'><button id='send'>Send</button></div>");
+                                   html.AppendLine("    </div>");
+                                   html.AppendLine("  </section>");
+                                   html.AppendLine("  <section id='view-text' class='view'>");
+                                   html.AppendLine("    <div class='card'>");
+                                   html.AppendLine("      <h3>Table Stream</h3>");
+                                   html.AppendLine("      <div id='log' class='log'></div>");
+                                   html.AppendLine("    </div>");
+                                   html.AppendLine("  </section>");
+                                   html.AppendLine("<script>");
+                                   html.AppendLine("const nameV = " + nameLiteral + ";");
+                                   html.AppendLine("const codeV = " + codeLiteral + ";");
+                                   html.AppendLine("const navButtons = document.querySelectorAll('.tab-btn');");
+                                   html.AppendLine("const views = document.querySelectorAll('.view');");
+                                   html.AppendLine("function showView(target) {");
+                                   html.AppendLine("  views.forEach(view => view.classList.toggle('active', view.id === 'view-' + target));");
+                                   html.AppendLine("  navButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.target === target));");
+                                   html.AppendLine("}");
+                                   html.AppendLine("navButtons.forEach(btn => btn.addEventListener('click', () => showView(btn.dataset.target)));");
+                                   html.AppendLine("const createPanel = document.getElementById('char-create');");
+                                   html.AppendLine("const sheetPanel = document.getElementById('char-sheet');");
+                                   html.AppendLine("const charStatus = document.getElementById('char-status');");
+                                   html.AppendLine("const saveBtn = document.getElementById('save');");
+                                   html.AppendLine("const editBtn = document.getElementById('edit-char');");
+                                   html.AppendLine("const refreshBtn = document.getElementById('refresh-char');");
+                                   html.AppendLine("const fieldMap = { Name: 'pc_name', Race: 'pc_race', Class: 'pc_class', Level: 'pc_level', STR: 'pc_str', DEX: 'pc_dex', CON: 'pc_con', INT: 'pc_int', WIS: 'pc_wis', CHA: 'pc_cha' };");
+                                   html.AppendLine("let currentPc = null;");
+                                   html.AppendLine("function setStatus(text, color) {");
+                                   html.AppendLine("  charStatus.textContent = text || ''; charStatus.style.color = color || '#274064';");
+                                   html.AppendLine("}");
+                                   html.AppendLine("function fillForm(pc) {");
+                                   html.AppendLine("  Object.entries(fieldMap).forEach(([key, id]) => {");
+                                   html.AppendLine("    const input = document.getElementById(id); if (!input) return;");
+                                   html.AppendLine("    if (pc && pc[key] !== undefined && pc[key] !== null) { input.value = pc[key]; }");
+                                   html.AppendLine("    else if (key === 'Level') input.value = 1; else if (['STR','DEX','CON','INT','WIS','CHA'].includes(key)) input.value = 10; else input.value = ''; ");
+                                   html.AppendLine("  });");
+                                   html.AppendLine("}");
+                                   html.AppendLine("function collectForm() {");
+                                   html.AppendLine("  const result = {}; Object.entries(fieldMap).forEach(([key, id]) => {");
+                                   html.AppendLine("    const input = document.getElementById(id); if (!input) return;");
+                                   html.AppendLine("    if (['STR','DEX','CON','INT','WIS','CHA','Level'].includes(key)) {");
+                                   html.AppendLine("      const parsed = Number(input.value); result[key] = Number.isFinite(parsed) && parsed > 0 ? parsed : (key === 'Level' ? 1 : 10);");
+                                   html.AppendLine("    } else { result[key] = input.value.trim(); }");
+                                   html.AppendLine("  }); return result;");
+                                   html.AppendLine("}");
+                                   html.AppendLine("function renderSheet(pc) {");
+                                   html.AppendLine("  const title = pc.Name && pc.Name.trim() ? pc.Name.trim() : 'Unnamed Adventurer';");
+                                   html.AppendLine("  document.getElementById('sheet-header').textContent = title;");
+                                   html.AppendLine("  const meta = (pc.Race && pc.Race.trim() ? pc.Race.trim() : 'Unknown') + ' ' + (pc.Class && pc.Class.trim() ? pc.Class.trim() : 'Adventurer') + ' (Lv ' + (pc.Level || 1) + ')';");
+                                   html.AppendLine("  document.getElementById('sheet-meta').textContent = meta;");
+                                   html.AppendLine("  ['STR','DEX','CON','INT','WIS','CHA'].forEach(stat => {");
+                                   html.AppendLine("    const el = document.getElementById('sheet-' + stat.toLowerCase());");
+                                   html.AppendLine("    if (el) { const value = Number(pc[stat] ?? 0); el.textContent = Number.isFinite(value) ? value : 0; }");
+                                   html.AppendLine("  });");
+                                   html.AppendLine("}");
+                                   html.AppendLine("function showForm(pc) { if (pc) fillForm(pc); createPanel.style.display = 'block'; sheetPanel.style.display = 'none'; setStatus('', '#274064'); showView('character'); }");
+                                   html.AppendLine("function showSheet(pc) { currentPc = pc; renderSheet(pc); createPanel.style.display = 'none'; sheetPanel.style.display = 'block'; setStatus('', '#274064'); showView('character'); }");
+                                   html.AppendLine("function hasCharacter(pc) { if (!pc) return false; if (pc.Name && pc.Name.trim()) return true; return ['STR','DEX','CON','INT','WIS','CHA'].some(stat => Number(pc[stat] || 0) > 0); }");
+                                   html.AppendLine("async function loadCharacter() {");
+                                   html.AppendLine("  try {");
+                                   html.AppendLine("    const response = await fetch(`/character?name=${encodeURIComponent(nameV)}&code=${encodeURIComponent(codeV)}`);");
+                                   html.AppendLine("    if (!response.ok) { showForm(); return; }");
+                                   html.AppendLine("    const pc = await response.json(); if (hasCharacter(pc)) showSheet(pc); else showForm();");
+                                   html.AppendLine("  } catch (err) { console.error('Failed to load character', err); showForm(); }");
+                                   html.AppendLine("}");
+                                   html.AppendLine("async function saveCharacter() {");
+                                   html.AppendLine("  const pc = collectForm(); setStatus('Saving...', '#274064');");
+                                   html.AppendLine("  try {");
+                                   html.AppendLine("    const response = await fetch('/character', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: codeV, name: nameV, pc }) });");
+                                   html.AppendLine("    if (response.ok) { setStatus('Character saved.', '#2a662a'); showSheet(pc); } else { setStatus('Save failed. Try again.', '#a33'); }");
+                                   html.AppendLine("  } catch (err) { console.error('Failed to save character', err); setStatus('Network error while saving.', '#a33'); }");
+                                   html.AppendLine("}");
+                                   html.AppendLine("async function generateCharacter(type) {");
+                                   html.AppendLine("  try {");
+                                   html.AppendLine("    const response = await fetch('/generate-character', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type }) });");
+                                   html.AppendLine("    if (response.ok) {");
+                                   html.AppendLine("      const generated = await response.json();");
+                                   html.AppendLine("      const mapped = { Name: generated.name || '', Race: generated.race || '', Class: generated['class'] || '', Level: 1, STR: generated.stats?.str ?? 10, DEX: generated.stats?.dex ?? 10, CON: generated.stats?.con ?? 10, INT: generated.stats?.int ?? 10, WIS: generated.stats?.wis ?? 10, CHA: generated.stats?.cha ?? 10 };");
+                                   html.AppendLine("      showForm(mapped); setStatus('Character template generated. Review and save when ready.', '#274064');");
+                                   html.AppendLine("    }");
+                                   html.AppendLine("  } catch (err) { console.error('Failed to generate character', err); setStatus('Failed to generate character.', '#a33'); }");
+                                   html.AppendLine("}");
+                                   html.AppendLine("window.generateCharacter = generateCharacter;");
+                                   html.AppendLine("if (saveBtn) saveBtn.addEventListener('click', e => { e.preventDefault(); saveCharacter(); });");
+                                   html.AppendLine("if (editBtn) editBtn.addEventListener('click', () => showForm(currentPc || null));");
+                                   html.AppendLine("if (refreshBtn) refreshBtn.addEventListener('click', () => loadCharacter());");
+                                   html.AppendLine("const msg = document.getElementById('msg');");
+                                   html.AppendLine("const send = document.getElementById('send');");
+                                   html.AppendLine("if (send) { send.addEventListener('click', async () => { if (!msg) return; const text = msg.value.trim(); if (!text) return; msg.value = ''; await fetch('/input', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: codeV, name: nameV, text }) }); }); }");
+                                   html.AppendLine("if (msg) { msg.addEventListener('keypress', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (send) send.click(); } }); }");
+                                   html.AppendLine("const log = document.getElementById('log');");
+                                   html.AppendLine("async function loadHistory() { try { const response = await fetch('/history'); if (response.ok) { const history = await response.json(); if (log) { log.textContent = ''; history.forEach(message => { if (message.content && message.content.trim()) { log.textContent += message.role + ': ' + message.content + '\\n'; } }); log.scrollTop = log.scrollHeight; } } } catch (err) { console.error('Failed to load history', err); } }");
+                                   html.AppendLine("if (log) { loadHistory(); const es = new EventSource('/stream'); es.onmessage = e => { log.textContent += e.data; log.scrollTop = log.scrollHeight; }; es.onerror = () => { console.log('Stream disconnected, attempting to reconnect...'); }; }");
+                                   html.AppendLine("showView('character');");
+                                   html.AppendLine("loadCharacter();");
+                                   html.AppendLine("</script>");
+                                   html.AppendLine("</body></html>");
 
-  <div id='act' class='card'>
-    <h3>Action</h3>
-    <textarea id='msg' style='width:100%;min-height:5em' placeholder='Your action...'></textarea>
-    <div style='margin-top:6px'><button id='send'>Send</button></div>
-  </div>
-
-<script>
-const nameV = '{nameJs}', codeV = '{codeJs}';
-
-// Auto-generation function
-async function generateCharacter(type) {{
-  try {{
-    const response = await fetch('/generate-character', {{
-      method: 'POST',
-      headers: {{ 'Content-Type': 'application/json' }},
-      body: JSON.stringify({{ type: type }})
-    }});
-    
-    if (response.ok) {{
-      const character = await response.json();
-      
-      // Fill form with generated character
-      document.getElementById('pc_name').value = character.name || '';
-      document.getElementById('pc_race').value = character.race || '';
-      document.getElementById('pc_class').value = character.class || '';
-      document.getElementById('pc_str').value = character.stats?.str || 10;
-      document.getElementById('pc_dex').value = character.stats?.dex || 10;
-      document.getElementById('pc_con').value = character.stats?.con || 10;
-      document.getElementById('pc_int').value = character.stats?.int || 10;
-      document.getElementById('pc_wis').value = character.stats?.wis || 10;
-      document.getElementById('pc_cha').value = character.stats?.cha || 10;
-    }}
-  }} catch (e) {{
-    console.error('Failed to generate character:', e);
-    alert('Failed to generate character. Please try again.');
-  }}
-}}
-
-// load existing pc
-(async () => {{
-  const r = await fetch(`/character?name=${{encodeURIComponent(nameV)}}&code=${{encodeURIComponent(codeV)}}`);
-  if(r.ok) {{
-    const pc = await r.json();
-    if(pc) {{
-      for (const [k,v] of Object.entries(pc)) {{
-        const el = document.getElementById('pc_' + k.toLowerCase());
-        if(el) el.value = v ?? '';
-      }}
-    }}
-  }}
-}})();
-
-document.getElementById('save').onclick = async () => {{
-  const pc = {{
-    Name:  document.getElementById('pc_name').value,
-    Race:  document.getElementById('pc_race').value,
-    Class: document.getElementById('pc_class').value,
-    STR: +document.getElementById('pc_str').value||0,
-    DEX: +document.getElementById('pc_dex').value||0,
-    CON: +document.getElementById('pc_con').value||0,
-    INT: +document.getElementById('pc_int').value||0,
-    WIS: +document.getElementById('pc_wis').value||0,
-    CHA: +document.getElementById('pc_cha').value||0
-  }};
-  await fetch('/character', {{
-    method:'POST',
-    headers: {{'Content-Type':'application/json'}},
-    body: JSON.stringify({{ code: codeV, name: nameV, pc }})
-  }});
-  alert('Saved!');
-}};
-
-document.getElementById('send').onclick = async () => {{
-  const box = document.getElementById('msg');
-  const text = box.value.trim();
-  if(!text) return;
-  box.value = '';
-  await fetch('/input', {{
-    method:'POST',
-    headers: {{'Content-Type':'application/json'}},
-    body: JSON.stringify({{ code: codeV, name: nameV, text }})
-  }});
-}};
-</script>
-</body></html>");
+                                   await ctx.Response.WriteAsync(html.ToString());
                                });
 
                                // GET /character?name=&code=
@@ -357,6 +417,7 @@ document.getElementById('send').onclick = async () => {{
                                            Name  = pc.GetProperty("Name").GetString() ?? "",
                                            Race  = pc.GetProperty("Race").GetString() ?? "",
                                            Class = pc.GetProperty("Class").GetString() ?? "",
+                                           Level = pc.TryGetProperty("Level", out var level) ? level.GetInt32() : 1,
                                            STR = pc.TryGetProperty("STR", out var str) ? str.GetInt32() : 0,
                                            DEX = pc.TryGetProperty("DEX", out var dex) ? dex.GetInt32() : 0,
                                            CON = pc.TryGetProperty("CON", out var con) ? con.GetInt32() : 0,
