@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -10,6 +11,7 @@ using System.Threading.Tasks;
 using NovaGM.Models;
 using NovaGM.Services.State;
 using NovaGM.Services.Retrieval; // Retriever, VectorStoreSqlite, HashEmbedder
+using NovaGM.Services.Multiplayer;
 
 namespace NovaGM.Services
 {
@@ -108,16 +110,40 @@ namespace NovaGM.Services
             using var narrCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
             narrCts.CancelAfter(TimeSpan.FromSeconds(20));
             var narratorSystem = AppendGenreContext(Prompts.NarratorSystem, genreContext);
-            var prose = await AskSafeAsync(
+            var narratorUser = Prompts.NarratorUser(JsonSerializer.Serialize(beat, _json), facts, compact, genreContext);
+            var narrationRaw = await AskSafeAsync(
                 _narrator,
                 narratorSystem,
-                Prompts.NarratorUser(JsonSerializer.Serialize(beat, _json), facts, compact, genreContext),
+                narratorUser,
                 narrCts.Token,
                 expectJson: false,
                 onToken: onNarratorToken
             );
-            if (string.IsNullOrWhiteSpace(prose))
-                prose = "Silence lingers. 1) Call out 2) Advance 3) Wait.<EOT>";
+
+            var finalProse = TruncateAtEot(narrationRaw).Trim();
+            if (string.IsNullOrWhiteSpace(finalProse))
+                finalProse = "Silence lingers. 1) Call out 2) Advance 3) Wait.";
+
+            if (GenreStyleGuard.Violates(genreContext, finalProse, out var reason))
+            {
+                var repairUser = narratorUser +
+                    $"\nNote: You drifted off-genre ({reason}). Strictly align to the GENRE CONTEXT. Keep the same facts/outcomes. End with <EOT>.";
+
+                var repairRaw = await AskSafeAsync(
+                    _narrator,
+                    narratorSystem,
+                    repairUser,
+                    narrCts.Token,
+                    expectJson: false,
+                    onToken: null
+                );
+
+                var repaired = TruncateAtEot(repairRaw).Trim();
+                if (!string.IsNullOrWhiteSpace(repaired))
+                {
+                    finalProse = repaired;
+                }
+            }
 
             // MEMORY → new facts
             using var memoCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
@@ -125,7 +151,7 @@ namespace NovaGM.Services
             var memJson = await AskSafeAsync(
                 _memory,
                 Prompts.MemorySystem,
-                Prompts.MemoryUser(playerText, prose),
+                Prompts.MemoryUser(playerText, finalProse),
                 memoCts.Token,
                 expectJson: true
             );
@@ -134,7 +160,7 @@ namespace NovaGM.Services
             if (delta?.Facts?.Count > 0)
                 _state.AddFacts(delta.Facts);
 
-            return prose;
+            return finalProse;
         }
 
         private async Task EnsureLoadedAsync()
@@ -186,31 +212,95 @@ namespace NovaGM.Services
         {
             if (!m.IsLoaded)
             {
-                if (!expectJson && onToken is not null) onToken("The lights flicker as the air hums. ");
-                return expectJson
-                    ? "{}"
-                    : "The lights flicker as the air hums. 1) Inspect the room 2) Call out 3) Wait.<EOT>";
+                if (!expectJson)
+                {
+                    const string fallback = "The lights flicker as the air hums.";
+                    onToken?.Invoke(fallback);
+                    return fallback;
+                }
+                return "{}";
             }
+
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            StringBuilder? streamBuffer = onToken is not null ? new StringBuilder() : null;
+            var lastSent = 0;
+
+            Action<string>? forwarder = null;
+            if (onToken is not null)
+            {
+                forwarder = chunk =>
+                {
+                    if (string.IsNullOrEmpty(chunk) || streamBuffer is null) return;
+
+                    streamBuffer.Append(chunk);
+                    var current = streamBuffer.ToString();
+                    var truncated = TruncateAtEot(current);
+
+                    if (truncated.Length > lastSent)
+                    {
+                        var delta = truncated.Substring(lastSent);
+                        if (!string.IsNullOrEmpty(delta))
+                        {
+                            onToken(delta);
+                        }
+                        lastSent = truncated.Length;
+                    }
+
+                    if (current.IndexOf("<EOT>", StringComparison.Ordinal) >= 0)
+                    {
+                        linked.Cancel();
+                    }
+                };
+            }
+
+            string raw = string.Empty;
 
             try
             {
-                var s = await m.AskAsync(sys, user, ct, onToken);
-                if (expectJson)
-                {
-                    var start = s.IndexOf('{');
-                    var end   = s.LastIndexOf('}');
-                    if (start >= 0 && end > start) s = s.Substring(start, end - start + 1);
-                }
-                // Ensure a clean terminator if narrator stopped mid-sentence.
-                if (!expectJson && !s.TrimEnd().EndsWith("<EOT>", StringComparison.Ordinal))
-                    s = s.TrimEnd() + " <EOT>";
-                return s.Trim();
+                raw = await m.AskAsync(sys, user, linked.Token, forwarder);
+            }
+            catch (OperationCanceledException) when (linked.IsCancellationRequested && !ct.IsCancellationRequested)
+            {
+                raw = streamBuffer?.ToString() ?? string.Empty;
             }
             catch
             {
-                if (!expectJson && onToken is not null) onToken("You hear a relay crackle to life. ");
-                return expectJson ? "{}" : "You hear a relay crackle to life. 1) Call out 2) Wait 3) Move on.<EOT>";
+                if (!expectJson)
+                {
+                    const string fallback = "You hear a relay crackle to life.";
+                    onToken?.Invoke(fallback);
+                    return fallback;
+                }
+                return "{}";
             }
+
+            if (streamBuffer is not null && streamBuffer.Length > 0)
+            {
+                raw = streamBuffer.ToString();
+            }
+
+            if (expectJson)
+            {
+                var start = raw.IndexOf('{');
+                var end = raw.LastIndexOf('}');
+                if (start >= 0 && end > start)
+                {
+                    raw = raw.Substring(start, end - start + 1);
+                }
+                return raw.Trim();
+            }
+
+            var final = TruncateAtEot(raw).Trim();
+            if (string.IsNullOrEmpty(final))
+            {
+                final = raw.Trim();
+            }
+            if (string.IsNullOrEmpty(final))
+            {
+                final = "The lights flicker as the air hums.";
+            }
+
+            return final;
         }
 
         private T? TryDeserialize<T>(string json)
@@ -234,6 +324,13 @@ namespace NovaGM.Services
             return TryDeserialize<Beat>(repaired);
         }
 
+        private static string TruncateAtEot(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text ?? string.Empty;
+            var idx = text.IndexOf("<EOT>", StringComparison.Ordinal);
+            return idx >= 0 ? text.Substring(0, idx) : text;
+        }
+
         private static string AppendGenreContext(string basePrompt, string genreContext)
         {
             if (string.IsNullOrWhiteSpace(genreContext)) return basePrompt;
@@ -242,6 +339,12 @@ namespace NovaGM.Services
 
         private static string BuildGenreContext()
         {
+            var sessionGenre = GameCoordinator.Instance.Session.GenreContext;
+            if (!string.IsNullOrWhiteSpace(sessionGenre))
+            {
+                return sessionGenre;
+            }
+
             try
             {
                 var config = GenreManager.Current;
@@ -309,11 +412,16 @@ namespace NovaGM.Services
                     }
                 }
 
-                return string.Join("; ", segments);
+                var combined = string.Join("; ", segments);
+                GameCoordinator.Instance.SetGenreContext(combined);
+                return combined;
             }
             catch
             {
-                return "Genre information unavailable";
+                var existing = GameCoordinator.Instance.Session.GenreContext;
+                return string.IsNullOrWhiteSpace(existing)
+                    ? "Genre information unavailable"
+                    : existing;
             }
         }
 

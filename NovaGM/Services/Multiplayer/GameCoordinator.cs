@@ -8,6 +8,11 @@ using System.Threading;
 
 namespace NovaGM.Services.Multiplayer
 {
+    public sealed class SessionSettings
+    {
+        public string GenreContext { get; set; } = "sci-fi (near-future, Expanse/cyberpunk blend)";
+    }
+
     public sealed class PlayerInput
     {
         public string Player { get; }
@@ -42,6 +47,7 @@ namespace NovaGM.Services.Multiplayer
         private readonly ConcurrentDictionary<string, PlayerCharacter> _players = new();
 
         public string CurrentCode { get; private set; }
+        public SessionSettings Session { get; } = new SessionSettings();
 
         private GameCoordinator()
         {
@@ -124,6 +130,11 @@ namespace NovaGM.Services.Multiplayer
         public int GetConnectedPlayerCount()
         {
             return _players.Count;
+        }
+
+        public void SetGenreContext(string genre)
+        {
+            Session.GenreContext = genre?.Trim() ?? string.Empty;
         }
     }
 }

@@ -2,8 +2,10 @@ using System;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using LLama;
 using LLama.Common;
+using LLama.Sampling;
 
 namespace NovaGM.Services
 {
@@ -39,7 +41,16 @@ namespace NovaGM.Services
 
             var sb = new StringBuilder();
             var prompt = sys + "\n\nUser:\n" + user + "\nAssistant:\n";
-            var infer = new InferenceParams { MaxTokens = 512 };
+            var infer = new InferenceParams
+            {
+                MaxTokens = Math.Max(512, 240),
+                SamplingPipeline = new DefaultSamplingPipeline
+                {
+                    Temperature = 0.6f,
+                    TopP = 0.9f
+                },
+                AntiPrompts = new List<string> { "<EOT>" }
+            };
 
             await foreach (var tok in _chat.ChatAsync(
                 new ChatHistory.Message(AuthorRole.User, prompt),
@@ -52,7 +63,6 @@ namespace NovaGM.Services
 
                 if (s.Contains("<EOT>", StringComparison.Ordinal))
                 {
-                    s = s.Replace("<EOT>", "");
                     sb.Append(s);
                     onToken?.Invoke(s);
                     break;
