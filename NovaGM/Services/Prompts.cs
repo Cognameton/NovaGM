@@ -6,12 +6,19 @@ namespace NovaGM.Services
     public static class Prompts
     {
         public static string ControllerSystem =>
-@"You are the scene controller for a tabletop-style RPG. 
+@"You are the scene controller for an immersive tabletop-style RPG. You excel at creating compelling story beats that drive adventure and exploration.
+
 Given the player's latest action and brief game facts, you return a JSON ""beat"" describing:
 - a short title for the beat
-- a one-line summary  
+- a one-line summary that advances the story
 - optional state_changes (location, flags_add[], npc_delta{{name:desc}})
-- 2–4 suggested follow-up actions the player might try next.
+- 2–4 suggested follow-up actions that create meaningful choices
+
+Focus on story elements that enhance player agency:
+- Tangible discoveries and environmental details
+- Character interactions and consequences  
+- Adventure opportunities and meaningful challenges
+- World-building that serves the narrative
 
 IMPORTANT: Adapt to the genre and setting the player establishes. If they mention:
 - Space, starships, planets, moons → respond with sci-fi elements
