@@ -57,29 +57,48 @@ namespace NovaGM.Views
             }
 
             // Set race
-            if (_bindings.TryGetValue("race", out var raceControl) && raceControl is ComboBox raceCombo)
+            if (_bindings.TryGetValue("race", out var raceControl))
             {
-                for (int i = 0; i < raceCombo.ItemCount; i++)
+                if (raceControl is ComboBox raceCombo)
                 {
-                    if (raceCombo.Items?[i]?.ToString()?.Equals(character.Race, StringComparison.OrdinalIgnoreCase) == true)
+                    for (int i = 0; i < raceCombo.ItemCount; i++)
                     {
-                        raceCombo.SelectedIndex = i;
-                        break;
+                        if (raceCombo.Items?[i]?.ToString()?.Equals(character.Race, StringComparison.OrdinalIgnoreCase) == true)
+                        {
+                            raceCombo.SelectedIndex = i;
+                            break;
+                        }
                     }
+                }
+                else if (raceControl is TextBox raceBox)
+                {
+                    raceBox.Text = character.Race;
                 }
             }
 
             // Set class
-            if (_bindings.TryGetValue("class", out var classControl) && classControl is ComboBox classCombo)
+            if (_bindings.TryGetValue("class", out var classControl))
             {
-                for (int i = 0; i < classCombo.ItemCount; i++)
+                if (classControl is ComboBox classCombo)
                 {
-                    if (classCombo.Items?[i]?.ToString()?.Equals(character.Class, StringComparison.OrdinalIgnoreCase) == true)
+                    for (int i = 0; i < classCombo.ItemCount; i++)
                     {
-                        classCombo.SelectedIndex = i;
-                        break;
+                        if (classCombo.Items?[i]?.ToString()?.Equals(character.Class, StringComparison.OrdinalIgnoreCase) == true)
+                        {
+                            classCombo.SelectedIndex = i;
+                            break;
+                        }
                     }
                 }
+                else if (classControl is TextBox classBox)
+                {
+                    classBox.Text = character.Class;
+                }
+            }
+
+            if (_bindings.TryGetValue("level", out var levelControl))
+            {
+                SetNumericValue(levelControl, 1);
             }
 
             // Set stats
@@ -88,7 +107,7 @@ namespace NovaGM.Views
                 if (_bindings.TryGetValue(stat, out var control))
                 {
                     var value = character.GetBaseStat(stat); // Use base stats before racial mods
-                    
+
                     if (control is Slider slider)
                     {
                         slider.Value = value;
@@ -167,6 +186,176 @@ namespace NovaGM.Views
                 else
                     _bindings[qq.Id] = input;
             }
+
+            BuildFallbackSection(host, races, classes);
+        }
+
+        private int ReadIntBinding(string id, int fallback)
+        {
+            if (!_bindings.TryGetValue(id, out var control)) return fallback;
+
+            if (control is Slider slider)
+            {
+                return (int)Math.Round(slider.Value);
+            }
+
+            if (control is TextBox box && int.TryParse(box.Text, out var parsed))
+            {
+                return parsed;
+            }
+
+            if (control is Grid grid && grid.Children.Count > 0 && grid.Children[0] is Slider gridSlider)
+            {
+                return (int)Math.Round(gridSlider.Value);
+            }
+
+            return fallback;
+        }
+
+        private static void SetNumericValue(Control control, int value)
+        {
+            switch (control)
+            {
+                case Slider slider:
+                    slider.Value = value;
+                    break;
+                case Grid grid when grid.Children.Count > 0 && grid.Children[0] is Slider gridSlider:
+                    gridSlider.Value = value;
+                    break;
+                case TextBox box:
+                    box.Text = value.ToString();
+                    break;
+            }
+        }
+
+        private void BuildFallbackSection(StackPanel host, string[] races, string[] classes)
+        {
+            var missingCore = new[] { "name", "race", "class" }.Any(id => !_bindings.ContainsKey(id));
+            var missingStats = new[] { "str", "dex", "con", "int", "wis", "cha" }.Any(id => !_bindings.ContainsKey(id));
+
+            if (!missingCore && !missingStats)
+                return;
+
+            var section = new StackPanel { Spacing = 6 };
+            section.Children.Add(new TextBlock
+            {
+                Text = "Manual Entry",
+                FontWeight = Avalonia.Media.FontWeight.SemiBold,
+                Margin = new Thickness(0, 8, 0, 0)
+            });
+
+            // Core fields
+            if (missingCore)
+            {
+                section.Children.Add(CreateTextInput("name", "Name"));
+
+                if (!_bindings.ContainsKey("race"))
+                {
+                    section.Children.Add(CreateComboInput("race", "Race", races));
+                }
+
+                if (!_bindings.ContainsKey("class"))
+                {
+                    section.Children.Add(CreateComboInput("class", "Class", classes));
+                }
+            }
+
+            // Level field (not always present in packs)
+            if (!_bindings.ContainsKey("level"))
+            {
+                section.Children.Add(CreateNumericInput("level", "Level", 1, 1, 20));
+            }
+
+            if (missingStats)
+            {
+                section.Children.Add(new TextBlock
+                {
+                    Text = "Attributes",
+                    FontWeight = Avalonia.Media.FontWeight.SemiBold,
+                    Margin = new Thickness(0, 6, 0, 0)
+                });
+
+                foreach (var stat in new[] { "str", "dex", "con", "int", "wis", "cha" })
+                {
+                    if (_bindings.ContainsKey(stat)) continue;
+                    section.Children.Add(CreateStatSlider(stat.ToUpperInvariant(), stat));
+                }
+            }
+
+            host.Children.Add(section);
+        }
+
+        private Control CreateTextInput(string id, string label)
+        {
+            var box = new TextBox { Width = 260 };
+            _bindings[id] = box;
+            return WrapLabeledControl(label, box);
+        }
+
+        private Control CreateComboInput(string id, string label, string[] options)
+        {
+            Control input;
+            if (options is { Length: > 0 })
+            {
+                var combo = new ComboBox
+                {
+                    ItemsSource = options,
+                    SelectedIndex = 0,
+                    Width = 260
+                };
+                input = combo;
+            }
+            else
+            {
+                input = new TextBox { Width = 260 };
+            }
+
+            _bindings[id] = input;
+            return WrapLabeledControl(label, input);
+        }
+
+        private Control CreateNumericInput(string id, string label, int defaultValue, int min, int max)
+        {
+            var slider = new Slider
+            {
+                Minimum = min,
+                Maximum = max,
+                Value = defaultValue,
+                TickFrequency = 1,
+                IsSnapToTickEnabled = true
+            };
+            var valueLabel = new TextBlock
+            {
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                Margin = new Thickness(8, 0, 0, 0),
+                Text = defaultValue.ToString()
+            };
+            slider.PropertyChanged += (_, e) =>
+            {
+                if (e.Property.Name == nameof(Slider.Value))
+                    valueLabel.Text = ((int)slider.Value).ToString();
+            };
+
+            var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Width = 260 };
+            grid.Children.Add(slider);
+            Grid.SetColumn(valueLabel, 1);
+            grid.Children.Add(valueLabel);
+
+            _bindings[id] = slider;
+            return WrapLabeledControl(label, grid);
+        }
+
+        private Control CreateStatSlider(string label, string id)
+        {
+            return CreateNumericInput(id, label, 10, 3, 20);
+        }
+
+        private static Control WrapLabeledControl(string label, Control control)
+        {
+            var panel = new StackPanel { Spacing = 4 };
+            panel.Children.Add(new TextBlock { Text = label });
+            panel.Children.Add(control);
+            return panel;
         }
 
         private void Cancel_Click(object? sender, RoutedEventArgs e) => Close();
@@ -187,6 +376,7 @@ namespace NovaGM.Views
             var name   = text("name");
             var raceId = sel("race");
             var classId= sel("class");
+            var lvl    = ReadIntBinding("level", 1);
 
             int str = slid("str"), dex = slid("dex"), con = slid("con"),
                 @int = slid("int"), wis = slid("wis"), cha = slid("cha");
@@ -204,7 +394,6 @@ namespace NovaGM.Views
                 cha += race.Mods.TryGetValue("cha", out var v6) ? v6 : 0;
             }
 
-            var lvl = 1;
             var prof = cls?.ProficiencyBonusByLevel is { Length: >0 } pb ? pb[Math.Clamp(lvl-1, 0, pb.Length-1)] : 2;
             int armor = 0, shield = 0, weaponAcc = 0;
 
