@@ -6,6 +6,7 @@ using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using NovaGM.Models;
 using NovaGM.Services;
 using NovaGM.Services.Packs;
 using NovaGM.Services.Rules;
@@ -213,14 +214,21 @@ namespace NovaGM.Views
             var atk   = StatCalculator.AttackBonus(str, prof, weaponAcc, rules);
             var carry = StatCalculator.CarryCap(str, rules);
 
-            var result = new
+            var result = new CharacterDraft
             {
-                name,
-                race = raceId,
-                @class = classId,
-                level = lvl,
-                abilities = new { str, dex, con, @int, wis, cha },
-                derived   = new { maxHP, ac, attackBonus = atk, carryCap = carry }
+                Name = name,
+                Race = raceId,
+                Class = classId,
+                Level = lvl,
+                Stats = new Stats
+                {
+                    STR = str,
+                    DEX = dex,
+                    CON = con,
+                    INT = @int,
+                    WIS = wis,
+                    CHA = cha
+                }
             };
 
             try
@@ -228,7 +236,23 @@ namespace NovaGM.Views
                 var outDir = Paths.AppDataDir;
                 Directory.CreateDirectory(outDir);
                 var path = Path.Combine(outDir, "last_character.json");
-                var json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+                var json = JsonSerializer.Serialize(new
+                {
+                    name = result.Name,
+                    race = result.Race,
+                    @class = result.Class,
+                    level = result.Level,
+                    abilities = new
+                    {
+                        str = result.Stats.STR,
+                        dex = result.Stats.DEX,
+                        con = result.Stats.CON,
+                        @int = result.Stats.INT,
+                        wis = result.Stats.WIS,
+                        cha = result.Stats.CHA
+                    },
+                    derived = new { maxHP, ac, attackBonus = atk, carryCap = carry }
+                }, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(path, json);
             }
             catch { /* ignore */ }

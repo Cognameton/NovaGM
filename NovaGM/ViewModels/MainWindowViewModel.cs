@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
@@ -70,6 +71,7 @@ namespace NovaGM.ViewModels
 
         public ICommand ShowRemotePlayerCommand { get; }
         public ICommand BackToRemotePlayerListCommand { get; }
+        public ICommand CreateHubCharacterCommand { get; }
 
         public ObservableCollection<string> JournalEntries { get; } = new();
         public string NewJournalText { get; set; } = "";
@@ -155,6 +157,11 @@ namespace NovaGM.ViewModels
             {
                 ActiveRemotePlayer = null;
                 return Task.CompletedTask;
+            });
+
+            CreateHubCharacterCommand = new RelayCommand(async _ =>
+            {
+                await CreateHubCharacterAsync();
             });
 
             // Journal add
@@ -508,6 +515,173 @@ namespace NovaGM.ViewModels
                 OnPropertyChanged(nameof(ActiveRemotePlayer));
             }
         }
+
+        private async Task CreateHubCharacterAsync()
+        {
+            CharacterDraft? draft = null;
+
+            var creator = new CharacterCreatorWindow();
+            var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
+            Window? tempOwner = null;
+
+            if (ownerWindow is null)
+            {
+                tempOwner = new Window { Width = 1, Height = 1, Opacity = 0, ShowInTaskbar = false, WindowStartupLocation = WindowStartupLocation.CenterScreen };
+                tempOwner.Show();
+                ownerWindow = tempOwner;
+            }
+
+            try
+            {
+                draft = await creator.ShowDialog<CharacterDraft?>(ownerWindow);
+            }
+            catch (Exception ex)
+            {
+                Messages.Add(new Message("GM", $"Failed to create character: {ex.Message}"));
+            }
+            finally
+            {
+                tempOwner?.Close();
+            }
+
+            if (draft is null)
+                return;
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                ApplyCharacterDraft(draft);
+            });
+        }
+
+        private void ApplyCharacterDraft(CharacterDraft draft)
+        {
+            var character = CreateCharacterFromDraft(draft);
+            var sheet = new CharacterSheetViewModel(character);
+
+            if (HubCharacters.Count == 1 && ReferenceEquals(HubCharacters[0], CharacterSheet))
+            {
+                HubCharacters.Clear();
+            }
+
+            HubCharacters.Add(sheet);
+            SelectedHubCharacter = sheet;
+        }
+
+        private static Character CreateCharacterFromDraft(CharacterDraft draft)
+        {
+            var stats = draft.Stats ?? new Stats();
+
+            var character = new Character
+            {
+                Name = string.IsNullOrWhiteSpace(draft.Name) ? "Player Character" : draft.Name.Trim(),
+                Race = string.IsNullOrWhiteSpace(draft.Race) ? "Unknown" : draft.Race.Trim(),
+                Class = string.IsNullOrWhiteSpace(draft.Class) ? "Adventurer" : draft.Class.Trim(),
+                Level = draft.Level > 0 ? draft.Level : 1,
+                Stats = new Stats
+                {
+                    STR = NormalizeStat(stats.STR),
+                    DEX = NormalizeStat(stats.DEX),
+                    CON = NormalizeStat(stats.CON),
+                    INT = NormalizeStat(stats.INT),
+                    WIS = NormalizeStat(stats.WIS),
+                    CHA = NormalizeStat(stats.CHA)
+                },
+                Equipment = BuildStarterEquipment(draft)
+            };
+
+            return character;
+        }
+
+        private static Dictionary<EquipmentSlot, Item> BuildStarterEquipment(CharacterDraft draft)
+        {
+            var equipment = new Dictionary<EquipmentSlot, Item>();
+            var genre = GenreManager.Current.Genre;
+            var classId = (draft.Class ?? string.Empty).ToLowerInvariant();
+
+            void Add(EquipmentSlot slot, string name)
+            {
+                if (string.IsNullOrWhiteSpace(name)) return;
+                equipment[slot] = new Item { Slot = slot, Name = name };
+            }
+
+            void AddCommon(string boots = "", string hands = "", string belt = "")
+            {
+                if (!string.IsNullOrWhiteSpace(boots)) Add(EquipmentSlot.Feet, boots);
+                if (!string.IsNullOrWhiteSpace(hands)) Add(EquipmentSlot.Hands, hands);
+                if (!string.IsNullOrWhiteSpace(belt)) Add(EquipmentSlot.Belt, belt);
+            }
+
+            switch (genre)
+            {
+                case GameGenre.Fantasy:
+                    if (classId.Contains("wizard") || classId.Contains("mage"))
+                    {
+                        Add(EquipmentSlot.MainHand, "Wizard's Staff");
+                        Add(EquipmentSlot.Cloak, "Spellweave Cloak");
+                        Add(EquipmentSlot.Chest, "Apprentice Robes");
+                    }
+                    else if (classId.Contains("cleric"))
+                    {
+                        Add(EquipmentSlot.MainHand, "Warhammer");
+                        Add(EquipmentSlot.OffHand, "Polished Shield");
+                        Add(EquipmentSlot.Chest, "Scale Mail");
+                    }
+                    else if (classId.Contains("rogue"))
+                    {
+                        Add(EquipmentSlot.MainHand, "Twin Daggers");
+                        Add(EquipmentSlot.Cloak, "Shadow Cloak");
+                        Add(EquipmentSlot.Chest, "Soft Leather Armor");
+                    }
+                    else
+                    {
+                        Add(EquipmentSlot.MainHand, "Longsword");
+                        Add(EquipmentSlot.OffHand, "Wooden Shield");
+                        Add(EquipmentSlot.Chest, "Chain Shirt");
+                    }
+                    AddCommon("Traveler's Boots", "Leather Gloves", "Adventurer's Belt");
+                    break;
+
+                case GameGenre.SciFi:
+                    Add(EquipmentSlot.Head, "Tactical Visor");
+                    if (classId.Contains("engineer") || classId.Contains("hacker"))
+                    {
+                        Add(EquipmentSlot.MainHand, "Smart Toolkit");
+                        Add(EquipmentSlot.Chest, "Utility Jumpsuit");
+                        Add(EquipmentSlot.Hands, "Interface Gloves");
+                    }
+                    else if (classId.Contains("scientist"))
+                    {
+                        Add(EquipmentSlot.MainHand, "Research Scanner");
+                        Add(EquipmentSlot.Chest, "Nano-Fabric Lab Coat");
+                    }
+                    else
+                    {
+                        Add(EquipmentSlot.MainHand, "Pulse Carbine");
+                        Add(EquipmentSlot.Chest, "Composite Armor Vest");
+                        Add(EquipmentSlot.OffHand, "Deployable Shield");
+                    }
+                    AddCommon("Mag-Boots", equipment.TryGetValue(EquipmentSlot.Hands, out _) ? "" : "Carbon Gloves", "Utility Harness");
+                    break;
+
+                case GameGenre.Horror:
+                    Add(EquipmentSlot.MainHand, "Crowbar");
+                    Add(EquipmentSlot.OffHand, "Flashlight");
+                    Add(EquipmentSlot.Chest, "Weathered Jacket");
+                    AddCommon("Sturdy Boots", "Work Gloves", "Survival Satchel");
+                    break;
+
+                default:
+                    Add(EquipmentSlot.MainHand, "Reliable Blade");
+                    Add(EquipmentSlot.OffHand, "Sturdy Shield");
+                    Add(EquipmentSlot.Chest, "Traveler's Vest");
+                    AddCommon("Trail Boots", "Ropebound Gloves", "Utility Belt");
+                    break;
+            }
+
+            return equipment;
+        }
+
+        private static int NormalizeStat(int value) => value <= 0 ? 10 : value;
 
         private Task LoadMissionAsync(Mission mission)
         {

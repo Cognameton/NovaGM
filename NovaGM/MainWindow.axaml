@@ -138,6 +138,11 @@
                   <TextBlock Text="Characters on this hub" FontWeight="SemiBold" />
                   <TextBlock Text="Select a character to view their sheet." FontSize="12" Foreground="{DynamicResource Brush.Muted}" />
 
+                  <Button Content="Create Character"
+                          Command="{Binding CreateHubCharacterCommand}"
+                          HorizontalAlignment="Stretch"
+                          Margin="0,0,0,8" />
+
                   <ListBox ItemsSource="{Binding HubCharacters}"
                            SelectedItem="{Binding SelectedHubCharacter, Mode=TwoWay}"
                            MinHeight="180">
