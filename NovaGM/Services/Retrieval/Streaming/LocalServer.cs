@@ -412,19 +412,26 @@ msg.addEventListener('keypress', (e) => {{
                                        var name = root.GetProperty("name").GetString() ?? "";
                                        var pc   = root.GetProperty("pc");
 
-                                       var model = new PlayerCharacter
+                                       PlayerCharacter model;
+                                       if (_coordinator.TryGetCharacter(code, name, out var existing))
                                        {
-                                           Name  = pc.GetProperty("Name").GetString() ?? "",
-                                           Race  = pc.GetProperty("Race").GetString() ?? "",
-                                           Class = pc.GetProperty("Class").GetString() ?? "",
-                                           Level = pc.TryGetProperty("Level", out var level) ? level.GetInt32() : 1,
-                                           STR = pc.TryGetProperty("STR", out var str) ? str.GetInt32() : 0,
-                                           DEX = pc.TryGetProperty("DEX", out var dex) ? dex.GetInt32() : 0,
-                                           CON = pc.TryGetProperty("CON", out var con) ? con.GetInt32() : 0,
-                                           INT = pc.TryGetProperty("INT", out var intel) ? intel.GetInt32() : 0,
-                                           WIS = pc.TryGetProperty("WIS", out var wis) ? wis.GetInt32() : 0,
-                                           CHA = pc.TryGetProperty("CHA", out var cha) ? cha.GetInt32() : 0,
-                                       };
+                                           model = existing;
+                                       }
+                                       else
+                                       {
+                                           model = new PlayerCharacter();
+                                       }
+
+                                       model.Name  = pc.GetProperty("Name").GetString() ?? "";
+                                       model.Race  = pc.GetProperty("Race").GetString() ?? "";
+                                       model.Class = pc.GetProperty("Class").GetString() ?? "";
+                                       model.Level = pc.TryGetProperty("Level", out var level) ? level.GetInt32() : 1;
+                                       model.STR = pc.TryGetProperty("STR", out var str) ? str.GetInt32() : 0;
+                                       model.DEX = pc.TryGetProperty("DEX", out var dex) ? dex.GetInt32() : 0;
+                                       model.CON = pc.TryGetProperty("CON", out var con) ? con.GetInt32() : 0;
+                                       model.INT = pc.TryGetProperty("INT", out var intel) ? intel.GetInt32() : 0;
+                                       model.WIS = pc.TryGetProperty("WIS", out var wis) ? wis.GetInt32() : 0;
+                                       model.CHA = pc.TryGetProperty("CHA", out var cha) ? cha.GetInt32() : 0;
 
                                        _coordinator.SetCharacter(code, name, model);
                                        ctx.Response.StatusCode = 204;

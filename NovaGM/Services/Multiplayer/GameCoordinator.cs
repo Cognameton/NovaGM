@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using NovaGM.Models;
 
 namespace NovaGM.Services.Multiplayer
 {
@@ -33,6 +34,7 @@ namespace NovaGM.Services.Multiplayer
         public int INT { get; set; }
         public int WIS { get; set; }
         public int CHA { get; set; }
+        public InventoryGrid Inventory { get; set; } = new();
     }
 
     /// Coordinates join code, inputs from LAN, and player character data.
@@ -69,6 +71,10 @@ namespace NovaGM.Services.Multiplayer
         {
             if (!string.Equals(code, CurrentCode, StringComparison.OrdinalIgnoreCase)) return;
             var key = NormalizeKey(name);
+            if (_players.TryGetValue(key, out var existing) && existing.Inventory is not null)
+            {
+                pc.Inventory = existing.Inventory;
+            }
             _players[key] = pc;
         }
 

@@ -159,6 +159,10 @@ namespace NovaGM.Services
             data.Items["staff"] = new ItemDef { Id = "staff", Name = "Wizard's Staff", Type = "weapon", Stats = new Dictionary<string, int> { ["dmgMin"] = 1, ["dmgMax"] = 6, ["acc"] = 0, ["magic"] = 2 }, Weight = 4.0 };
             data.Items["leather_armor"] = new ItemDef { Id = "leather_armor", Name = "Leather Armor", Type = "armor", Stats = new Dictionary<string, int> { ["ac"] = 2 }, Weight = 10.0 };
             data.Items["shield"] = new ItemDef { Id = "shield", Name = "Shield", Type = "armor", Stats = new Dictionary<string, int> { ["shield"] = 2 }, Weight = 6.0 };
+            data.Items["healing_potion"] = new ItemDef { Id = "healing_potion", Name = "Healing Potion", Type = "consumable", Stats = new Dictionary<string, int> { ["heal"] = 8 }, Weight = 1.0, Description = "Restores vigor when consumed." };
+            data.Items["chain_mail"] = new ItemDef { Id = "chain_mail", Name = "Chain Mail", Type = "armor", Stats = new Dictionary<string, int> { ["ac"] = 4 }, Weight = 20.0 };
+            data.Items["throwing_axe"] = new ItemDef { Id = "throwing_axe", Name = "Throwing Axe", Type = "weapon", Stats = new Dictionary<string, int> { ["dmgMin"] = 1, ["dmgMax"] = 6, ["acc"] = 1 }, Weight = 2.0 };
+            data.Items["arcane_talisman"] = new ItemDef { Id = "arcane_talisman", Name = "Arcane Talisman", Type = "trinket", Stats = new Dictionary<string, int> { ["magic"] = 3 }, Weight = 0.2, Description = "A charm that amplifies spell power." };
 
             // Fantasy Rules with magic formulas
             data.Rules.Constants["BaseAC"] = 10;
@@ -203,6 +207,10 @@ namespace NovaGM.Services
             data.Items["plasma_sword"] = new ItemDef { Id = "plasma_sword", Name = "Plasma Sword", Type = "weapon", Stats = new Dictionary<string, int> { ["dmgMin"] = 2, ["dmgMax"] = 12, ["acc"] = 0 }, Weight = 2.0 };
             data.Items["combat_suit"] = new ItemDef { Id = "combat_suit", Name = "Combat Suit", Type = "armor", Stats = new Dictionary<string, int> { ["ac"] = 4, ["shield"] = 1 }, Weight = 15.0 };
             data.Items["datapad"] = new ItemDef { Id = "datapad", Name = "Datapad", Type = "tool", Stats = new Dictionary<string, int> { ["tech"] = 2 }, Weight = 0.5 };
+            data.Items["plasma_pistol"] = new ItemDef { Id = "plasma_pistol", Name = "Plasma Pistol", Type = "weapon", Stats = new Dictionary<string, int> { ["dmgMin"] = 1, ["dmgMax"] = 6, ["acc"] = 1 }, Weight = 3.0 };
+            data.Items["shield_generator"] = new ItemDef { Id = "shield_generator", Name = "Shield Generator", Type = "device", Stats = new Dictionary<string, int> { ["shield"] = 3 }, Weight = 4.0, Description = "Creates a short-lived energy barrier." };
+            data.Items["stealth_cloak"] = new ItemDef { Id = "stealth_cloak", Name = "Stealth Cloak", Type = "gear", Stats = new Dictionary<string, int> { ["stealth"] = 3 }, Weight = 2.5 };
+            data.Items["hacking_rig"] = new ItemDef { Id = "hacking_rig", Name = "Hacking Rig", Type = "tool", Stats = new Dictionary<string, int> { ["tech"] = 3 }, Weight = 5.0 };
 
             // Sci-Fi Rules with tech formulas
             data.Rules.Constants["BaseAC"] = 10;
@@ -247,6 +255,10 @@ namespace NovaGM.Services
             data.Items["bow"] = new ItemDef { Id = "bow", Name = "Crossbow", Type = "weapon", Stats = new Dictionary<string, int> { ["dmgMin"] = 1, ["dmgMax"] = 10, ["acc"] = 1 }, Weight = 5.0 };
             data.Items["vest"] = new ItemDef { Id = "vest", Name = "Tactical Vest", Type = "armor", Stats = new Dictionary<string, int> { ["ac"] = 3 }, Weight = 8.0 };
             data.Items["flashlight"] = new ItemDef { Id = "flashlight", Name = "Flashlight", Type = "tool", Stats = new Dictionary<string, int> { ["light"] = 1 }, Weight = 1.0 };
+            data.Items["revolver"] = new ItemDef { Id = "revolver", Name = "Revolver", Type = "weapon", Stats = new Dictionary<string, int> { ["dmgMin"] = 2, ["dmgMax"] = 6, ["acc"] = 1 }, Weight = 4.0 };
+            data.Items["holy_water"] = new ItemDef { Id = "holy_water", Name = "Holy Water", Type = "consumable", Stats = new Dictionary<string, int> { ["banish"] = 2 }, Weight = 0.5 };
+            data.Items["first_aid"] = new ItemDef { Id = "first_aid", Name = "First Aid Kit", Type = "consumable", Stats = new Dictionary<string, int> { ["heal"] = 6 }, Weight = 2.5 };
+            data.Items["silver_knife"] = new ItemDef { Id = "silver_knife", Name = "Silver Knife", Type = "weapon", Stats = new Dictionary<string, int> { ["dmgMin"] = 1, ["dmgMax"] = 4, ["acc"] = 1, ["banish"] = 1 }, Weight = 1.5 };
 
             // Horror Rules with sanity system
             data.Rules.Constants["BaseAC"] = 10;

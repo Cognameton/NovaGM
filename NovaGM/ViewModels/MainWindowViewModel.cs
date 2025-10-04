@@ -16,6 +16,7 @@ using NovaGM.Models;
 using NovaGM.Services;               // AgentOrchestrator, ShutdownUtil
 using NovaGM.Services.Streaming;     // LocalBroadcaster
 using NovaGM.Services.Multiplayer;   // GameCoordinator
+using NovaGM.Services.Inventory;     // Inventory service
 using NovaGM.Views;                  // SettingsWindow, PacksWindow, ModelsWindow (if present)
 
 namespace NovaGM.ViewModels
@@ -96,6 +97,7 @@ namespace NovaGM.ViewModels
 
         private readonly AgentOrchestrator _agent = new();
         private readonly SemaphoreSlim _turnLock = new(1, 1);
+        private readonly InventoryService _inventoryService;
 
         public MainWindowViewModel()
         {
@@ -120,6 +122,9 @@ namespace NovaGM.ViewModels
                 }
             };
             CharacterSheet = new CharacterSheetViewModel(c);
+            _inventoryService = new InventoryService(_agent.StateStore);
+            CharacterSheet.Character.Inventory = _inventoryService.GetInventoryForHubCharacter(CharacterSheet.Character.Name);
+            _inventoryService.SaveInventory(InventoryKeys.ForHubCharacter(CharacterSheet.Character.Name), CharacterSheet.Character.Inventory);
             HubCharacters.Add(CharacterSheet);
             SelectedHubCharacter = CharacterSheet;
 
@@ -508,6 +513,10 @@ namespace NovaGM.ViewModels
             if (remote is null) return;
 
             var character = GameCoordinator.Instance.GetPlayerCharacter(playerName);
+            if (character is not null)
+            {
+                character.Inventory = _inventoryService.GetInventoryForPlayer(playerName);
+            }
             remote.UpdateFrom(character);
 
             if (ActiveRemotePlayer == remote)
@@ -556,6 +565,8 @@ namespace NovaGM.ViewModels
         private void ApplyCharacterDraft(CharacterDraft draft)
         {
             var character = CreateCharacterFromDraft(draft);
+            var key = InventoryKeys.ForHubCharacter(character.Name);
+            character.Inventory = _inventoryService.GetInventory(key);
             var sheet = new CharacterSheetViewModel(character);
 
             if (HubCharacters.Count == 1 && ReferenceEquals(HubCharacters[0], CharacterSheet))
@@ -565,6 +576,7 @@ namespace NovaGM.ViewModels
 
             HubCharacters.Add(sheet);
             SelectedHubCharacter = sheet;
+            _inventoryService.SaveInventory(key, character.Inventory);
         }
 
         private static Character CreateCharacterFromDraft(CharacterDraft draft)

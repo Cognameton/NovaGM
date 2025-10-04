@@ -10,5 +10,6 @@ namespace NovaGM.Models
         public int Level { get; set; } = 1;
         public Stats Stats { get; set; } = new();
         public Dictionary<EquipmentSlot, Item> Equipment { get; set; } = new();
+        public InventoryGrid Inventory { get; set; } = new();
     }
 }

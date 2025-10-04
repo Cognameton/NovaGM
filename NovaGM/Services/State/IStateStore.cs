@@ -23,5 +23,14 @@ namespace NovaGM.Services.State
 
         /// <summary>Adds new facts (deduplicated) and persists them.</summary>
         void AddFacts(IEnumerable<string> facts);
+
+        /// <summary>Loads the inventory for the supplied key (player name).</summary>
+        InventoryGrid LoadInventory(string key);
+
+        /// <summary>Persists the inventory for the supplied key.</summary>
+        void SaveInventory(string key, InventoryGrid inventory);
+
+        /// <summary>Removes a stored inventory snapshot.</summary>
+        void RemoveInventory(string key);
     }
 }

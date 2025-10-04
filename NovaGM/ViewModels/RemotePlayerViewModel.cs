@@ -55,7 +55,8 @@ namespace NovaGM.ViewModels
                 Race = pc.Race ?? string.Empty,
                 Class = pc.Class ?? string.Empty,
                 Level = pc.Level ?? 1,
-                Stats = stats
+                Stats = stats,
+                Inventory = pc.Inventory ?? new InventoryGrid()
             };
 
             Character = new CharacterSheetViewModel(character);

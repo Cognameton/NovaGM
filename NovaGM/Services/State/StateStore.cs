@@ -83,6 +83,32 @@ namespace NovaGM.Services.State
             return $"{loc}flags=[{string.Join(',', flags)}]; npcs=[{string.Join(',', npcs)}]; facts=[{string.Join(';', facts)}]";
         }
 
+        public InventoryGrid LoadInventory(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return new InventoryGrid();
+            if (_state.Inventories.TryGetValue(key, out var snapshot))
+            {
+                return InventoryGrid.FromSnapshot(snapshot);
+            }
+            return new InventoryGrid();
+        }
+
+        public void SaveInventory(string key, InventoryGrid inventory)
+        {
+            if (string.IsNullOrWhiteSpace(key) || inventory is null) return;
+            _state.Inventories[key] = inventory.ToSnapshot();
+            Save();
+        }
+
+        public void RemoveInventory(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return;
+            if (_state.Inventories.Remove(key))
+            {
+                Save();
+            }
+        }
+
         // ---------- helpers ----------
 
         private static GameState CreateEmpty() => new GameState
@@ -97,6 +123,7 @@ namespace NovaGM.Services.State
             _ = _state.Facts;
             _ = _state.Flags;
             _ = _state.Npcs;
+            _ = _state.Inventories;
             _state.Location ??= "";
         }
 

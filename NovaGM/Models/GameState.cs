@@ -20,6 +20,9 @@ namespace NovaGM.Models
         /// <summary>Lightweight “facts” the narrator must honor (loot found, clues, injuries…).</summary>
         public List<string> Facts { get; } = new();
 
+        /// <summary>Player/character identifier → inventory snapshot.</summary>
+        public Dictionary<string, InventoryGridSnapshot> Inventories { get; } = new();
+
         public bool HasPremise => !string.IsNullOrWhiteSpace(Premise);
     }
 }
