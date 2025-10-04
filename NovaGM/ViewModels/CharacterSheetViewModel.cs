@@ -36,6 +36,9 @@ namespace NovaGM.ViewModels
 
         public List<Item> EquippedList => Character.Equipment.Values.ToList();
 
+        public IReadOnlyList<InventorySlotViewModel> InventorySlots
+            => Character.Inventory.Slots.Select(slot => new InventorySlotViewModel(slot)).ToList();
+
         private string GetItemName(EquipmentSlot slot)
             => Character.Equipment.TryGetValue(slot, out var item) ? item.Name : "—";
     }
