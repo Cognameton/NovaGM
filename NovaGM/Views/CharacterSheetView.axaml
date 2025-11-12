@@ -38,16 +38,41 @@
                     Orientation="Horizontal"
                     HorizontalAlignment="Center"
                     Spacing="12">
-          <Button Content="{Binding Head, TargetNullValue='Head Slot'}" MinWidth="120"/>
-          <Button Content="{Binding Neck, TargetNullValue='Neck Slot'}" MinWidth="120"/>
-          <Button Content="{Binding Cloak, TargetNullValue='Cloak Slot'}" MinWidth="120"/>
+          <Button Content="{Binding Head, TargetNullValue='Head Slot'}" 
+                  MinWidth="120"
+                  Click="EquipmentSlot_Click"
+                  Tag="Head"/>
+          <Button Content="{Binding Neck, TargetNullValue='Neck Slot'}" 
+                  MinWidth="120"
+                  Click="EquipmentSlot_Click"
+                  Tag="Neck"/>
+          <Button Content="{Binding Cloak, TargetNullValue='Cloak Slot'}" 
+                  MinWidth="120"
+                  Click="EquipmentSlot_Click"
+                  Tag="Cloak"/>
         </StackPanel>
 
         <!-- Left column -->
-        <Button Grid.Row="1" Grid.Column="0" Content="{Binding Chest, TargetNullValue='Chest Slot'}" MinWidth="120"/>
-        <Button Grid.Row="2" Grid.Column="0" Content="{Binding Hands, TargetNullValue='Hands Slot'}" MinWidth="120"/>
-        <Button Grid.Row="3" Grid.Column="0" Content="{Binding MainHand, TargetNullValue='Main Hand'}" MinWidth="120"/>
-        <Button Grid.Row="4" Grid.Column="0" Content="{Binding Ring1, TargetNullValue='Ring Slot'}" MinWidth="120"/>
+        <Button Grid.Row="1" Grid.Column="0" 
+                Content="{Binding Chest, TargetNullValue='Chest Slot'}" 
+                MinWidth="120"
+                Click="EquipmentSlot_Click"
+                Tag="Chest"/>
+        <Button Grid.Row="2" Grid.Column="0" 
+                Content="{Binding Hands, TargetNullValue='Hands Slot'}" 
+                MinWidth="120"
+                Click="EquipmentSlot_Click"
+                Tag="Hands"/>
+        <Button Grid.Row="3" Grid.Column="0" 
+                Content="{Binding MainHand, TargetNullValue='Main Hand'}" 
+                MinWidth="120"
+                Click="EquipmentSlot_Click"
+                Tag="MainHand"/>
+        <Button Grid.Row="4" Grid.Column="0" 
+                Content="{Binding Ring1, TargetNullValue='Ring Slot'}" 
+                MinWidth="120"
+                Click="EquipmentSlot_Click"
+                Tag="Ring1"/>
 
         <!-- Center silhouette -->
         <Border Grid.Row="1"
