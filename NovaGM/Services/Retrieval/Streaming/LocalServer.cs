@@ -477,6 +477,157 @@ msg.addEventListener('keypress', (e) => {{
                                        await ctx.Response.WriteAsync("bad json");
                                    }
                                });
+                               
+                               // POST /equipment/equip { code, name, itemId, slot }
+                               endpoints.MapPost("/equipment/equip", async ctx =>
+                               {
+                                   try
+                                   {
+                                       using var sr = new StreamReader(ctx.Request.Body);
+                                       var body = await sr.ReadToEndAsync();
+                                       using var doc = JsonDocument.Parse(body);
+                                       var root = doc.RootElement;
+                                       
+                                       var code = root.GetProperty("code").GetString() ?? "";
+                                       var name = root.GetProperty("name").GetString() ?? "";
+                                       var itemId = root.GetProperty("itemId").GetString() ?? "";
+                                       var slotName = root.GetProperty("slot").GetString() ?? "";
+                                       
+                                       if (!Enum.TryParse<EquipmentSlot>(slotName, out var slot))
+                                       {
+                                           ctx.Response.StatusCode = 400;
+                                           await ctx.Response.WriteAsync("invalid slot");
+                                           return;
+                                       }
+                                       
+                                       if (!_coordinator.TryGetCharacter(code, name, out var pc))
+                                       {
+                                           ctx.Response.StatusCode = 404;
+                                           await ctx.Response.WriteAsync("character not found");
+                                           return;
+                                       }
+                                       
+                                       // Find item in inventory
+                                       var inventorySlot = pc.Inventory.Slots.FirstOrDefault(s => 
+                                           s?.ItemId?.Equals(itemId, StringComparison.OrdinalIgnoreCase) == true);
+                                       
+                                       if (inventorySlot == null)
+                                       {
+                                           ctx.Response.StatusCode = 404;
+                                           await ctx.Response.WriteAsync("item not found in inventory");
+                                           return;
+                                       }
+                                       
+                                       // Unequip existing item if slot is occupied
+                                       if (pc.Equipment.ContainsKey(slot))
+                                       {
+                                           var existingItem = pc.Equipment[slot];
+                                           var entry = new InventoryEntry(
+                                               existingItem.Name.ToLowerInvariant().Replace(" ", "_"),
+                                               existingItem.Name,
+                                               1,
+                                               null,
+                                               existingItem.StatMods
+                                           );
+                                           
+                                           if (!pc.Inventory.TryAdd(entry))
+                                           {
+                                               ctx.Response.StatusCode = 400;
+                                               await ctx.Response.WriteAsync("inventory full");
+                                               return;
+                                           }
+                                           
+                                           pc.Equipment.Remove(slot);
+                                       }
+                                       
+                                       // Create Item from InventoryEntry
+                                       var item = new Item
+                                       {
+                                           Name = inventorySlot.Name,
+                                           Slot = slot,
+                                           StatMods = new Dictionary<string, int>(inventorySlot.Modifiers),
+                                           Description = $"{inventorySlot.Name} equipped to {slot}"
+                                       };
+                                       
+                                       // Add to equipment
+                                       pc.Equipment[slot] = item;
+                                       
+                                       // Remove from inventory
+                                       pc.Inventory.Remove(itemId, 1);
+                                       
+                                       ctx.Response.ContentType = "application/json";
+                                       await ctx.Response.WriteAsync(JsonSerializer.Serialize(new { success = true }));
+                                   }
+                                   catch (Exception ex)
+                                   {
+                                       ctx.Response.StatusCode = 500;
+                                       await ctx.Response.WriteAsync($"error: {ex.Message}");
+                                   }
+                               });
+                               
+                               // POST /equipment/unequip { code, name, slot }
+                               endpoints.MapPost("/equipment/unequip", async ctx =>
+                               {
+                                   try
+                                   {
+                                       using var sr = new StreamReader(ctx.Request.Body);
+                                       var body = await sr.ReadToEndAsync();
+                                       using var doc = JsonDocument.Parse(body);
+                                       var root = doc.RootElement;
+                                       
+                                       var code = root.GetProperty("code").GetString() ?? "";
+                                       var name = root.GetProperty("name").GetString() ?? "";
+                                       var slotName = root.GetProperty("slot").GetString() ?? "";
+                                       
+                                       if (!Enum.TryParse<EquipmentSlot>(slotName, out var slot))
+                                       {
+                                           ctx.Response.StatusCode = 400;
+                                           await ctx.Response.WriteAsync("invalid slot");
+                                           return;
+                                       }
+                                       
+                                       if (!_coordinator.TryGetCharacter(code, name, out var pc))
+                                       {
+                                           ctx.Response.StatusCode = 404;
+                                           await ctx.Response.WriteAsync("character not found");
+                                           return;
+                                       }
+                                       
+                                       if (!pc.Equipment.TryGetValue(slot, out var item))
+                                       {
+                                           ctx.Response.StatusCode = 400;
+                                           await ctx.Response.WriteAsync("slot is empty");
+                                           return;
+                                       }
+                                       
+                                       // Create inventory entry
+                                       var entry = new InventoryEntry(
+                                           item.Name.ToLowerInvariant().Replace(" ", "_"),
+                                           item.Name,
+                                           1,
+                                           null,
+                                           item.StatMods
+                                       );
+                                       
+                                       if (!pc.Inventory.TryAdd(entry))
+                                       {
+                                           ctx.Response.StatusCode = 400;
+                                           await ctx.Response.WriteAsync("inventory full");
+                                           return;
+                                       }
+                                       
+                                       // Remove from equipment
+                                       pc.Equipment.Remove(slot);
+                                       
+                                       ctx.Response.ContentType = "application/json";
+                                       await ctx.Response.WriteAsync(JsonSerializer.Serialize(new { success = true }));
+                                   }
+                                   catch (Exception ex)
+                                   {
+                                       ctx.Response.StatusCode = 500;
+                                       await ctx.Response.WriteAsync($"error: {ex.Message}");
+                                   }
+                               });
 
                                // GET /stream  (SSE) — linked to app shutdown + this server shutdown
                                endpoints.MapGet("/stream", async ctx =>
