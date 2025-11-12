@@ -90,20 +90,20 @@
       <StackPanel Spacing="10">
         <TextBlock Text="Attributes" FontWeight="Bold"/>
 
-        <!-- Simple two-column grid for stats -->
+        <!-- Simple two-column grid for stats with modifiers -->
         <UniformGrid Columns="2" Rows="6">
           <TextBlock Text="STR"/>
-          <TextBlock Text="{Binding STR}"/>
+          <TextBlock Text="{Binding STRDisplay}"/>
           <TextBlock Text="DEX"/>
-          <TextBlock Text="{Binding DEX}"/>
+          <TextBlock Text="{Binding DEXDisplay}"/>
           <TextBlock Text="CON"/>
-          <TextBlock Text="{Binding CON}"/>
+          <TextBlock Text="{Binding CONDisplay}"/>
           <TextBlock Text="INT"/>
-          <TextBlock Text="{Binding INT}"/>
+          <TextBlock Text="{Binding INTDisplay}"/>
           <TextBlock Text="WIS"/>
-          <TextBlock Text="{Binding WIS}"/>
+          <TextBlock Text="{Binding WISDisplay}"/>
           <TextBlock Text="CHA"/>
-          <TextBlock Text="{Binding CHA}"/>
+          <TextBlock Text="{Binding CHADisplay}"/>
         </UniformGrid>
 
         <Separator/>
