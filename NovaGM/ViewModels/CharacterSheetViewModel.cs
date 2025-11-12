@@ -1,10 +1,13 @@
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using NovaGM.Models;
+using NovaGM.Services;
 
 namespace NovaGM.ViewModels
 {
-    public sealed class CharacterSheetViewModel
+    public sealed class CharacterSheetViewModel : INotifyPropertyChanged
     {
         public CharacterSheetViewModel(Character c) => Character = c;
         public Character Character { get; }
@@ -27,12 +30,45 @@ namespace NovaGM.ViewModels
 
         public Stats S => Character.Stats;
 
-        public int STR => S.STR; public int STRMod => Stats.Mod(S.STR);
-        public int DEX => S.DEX; public int DEXMod => Stats.Mod(S.DEX);
-        public int CON => S.CON; public int CONMod => Stats.Mod(S.CON);
-        public int INT => S.INT; public int INTMod => Stats.Mod(S.INT);
-        public int WIS => S.WIS; public int WISMod => Stats.Mod(S.WIS);
-        public int CHA => S.CHA; public int CHAMod => Stats.Mod(S.CHA);
+        // Stats with equipment modifiers
+        private Dictionary<string, int> _statMods => EquipmentService.GetAllStatModifiers(Character);
+        
+        public int STR => EquipmentService.CalculateStatWithModifiers(Character, "STR", S.STR);
+        public int STRBase => S.STR;
+        public int STRBonus => _statMods["STR"];
+        public string STRDisplay => STRBonus != 0 ? $"{STR} ({S.STR}{(STRBonus > 0 ? "+" : "")}{STRBonus})" : STR.ToString();
+        
+        public int DEX => EquipmentService.CalculateStatWithModifiers(Character, "DEX", S.DEX);
+        public int DEXBase => S.DEX;
+        public int DEXBonus => _statMods["DEX"];
+        public string DEXDisplay => DEXBonus != 0 ? $"{DEX} ({S.DEX}{(DEXBonus > 0 ? "+" : "")}{DEXBonus})" : DEX.ToString();
+        
+        public int CON => EquipmentService.CalculateStatWithModifiers(Character, "CON", S.CON);
+        public int CONBase => S.CON;
+        public int CONBonus => _statMods["CON"];
+        public string CONDisplay => CONBonus != 0 ? $"{CON} ({S.CON}{(CONBonus > 0 ? "+" : "")}{CONBonus})" : CON.ToString();
+        
+        public int INT => EquipmentService.CalculateStatWithModifiers(Character, "INT", S.INT);
+        public int INTBase => S.INT;
+        public int INTBonus => _statMods["INT"];
+        public string INTDisplay => INTBonus != 0 ? $"{INT} ({S.INT}{(INTBonus > 0 ? "+" : "")}{INTBonus})" : INT.ToString();
+        
+        public int WIS => EquipmentService.CalculateStatWithModifiers(Character, "WIS", S.WIS);
+        public int WISBase => S.WIS;
+        public int WISBonus => _statMods["WIS"];
+        public string WISDisplay => WISBonus != 0 ? $"{WIS} ({S.WIS}{(WISBonus > 0 ? "+" : "")}{WISBonus})" : WIS.ToString();
+        
+        public int CHA => EquipmentService.CalculateStatWithModifiers(Character, "CHA", S.CHA);
+        public int CHABase => S.CHA;
+        public int CHABonus => _statMods["CHA"];
+        public string CHADisplay => CHABonus != 0 ? $"{CHA} ({S.CHA}{(CHABonus > 0 ? "+" : "")}{CHABonus})" : CHA.ToString();
+
+        public int STRMod => Stats.Mod(STR);
+        public int DEXMod => Stats.Mod(DEX);
+        public int CONMod => Stats.Mod(CON);
+        public int INTMod => Stats.Mod(INT);
+        public int WISMod => Stats.Mod(WIS);
+        public int CHAMod => Stats.Mod(CHA);
 
         public List<Item> EquippedList => Character.Equipment.Values.ToList();
 
@@ -41,5 +77,42 @@ namespace NovaGM.ViewModels
 
         private string GetItemName(EquipmentSlot slot)
             => Character.Equipment.TryGetValue(slot, out var item) ? item.Name : "—";
+        
+        /// <summary>
+        /// Refresh all bindings after equipment changes
+        /// </summary>
+        public void RefreshAll()
+        {
+            OnPropertyChanged(nameof(Head));
+            OnPropertyChanged(nameof(Neck));
+            OnPropertyChanged(nameof(Cloak));
+            OnPropertyChanged(nameof(Chest));
+            OnPropertyChanged(nameof(Hands));
+            OnPropertyChanged(nameof(Belt));
+            OnPropertyChanged(nameof(Legs));
+            OnPropertyChanged(nameof(Feet));
+            OnPropertyChanged(nameof(MainHand));
+            OnPropertyChanged(nameof(OffHand));
+            OnPropertyChanged(nameof(Ring1));
+            OnPropertyChanged(nameof(Ring2));
+            OnPropertyChanged(nameof(EquippedList));
+            OnPropertyChanged(nameof(InventorySlots));
+            OnPropertyChanged(nameof(STR));
+            OnPropertyChanged(nameof(STRDisplay));
+            OnPropertyChanged(nameof(DEX));
+            OnPropertyChanged(nameof(DEXDisplay));
+            OnPropertyChanged(nameof(CON));
+            OnPropertyChanged(nameof(CONDisplay));
+            OnPropertyChanged(nameof(INT));
+            OnPropertyChanged(nameof(INTDisplay));
+            OnPropertyChanged(nameof(WIS));
+            OnPropertyChanged(nameof(WISDisplay));
+            OnPropertyChanged(nameof(CHA));
+            OnPropertyChanged(nameof(CHADisplay));
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        private void OnPropertyChanged([CallerMemberName] string? name = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 }
