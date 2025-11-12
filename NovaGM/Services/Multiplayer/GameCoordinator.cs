@@ -34,6 +34,7 @@ namespace NovaGM.Services.Multiplayer
         public int INT { get; set; }
         public int WIS { get; set; }
         public int CHA { get; set; }
+        public Dictionary<EquipmentSlot, Item> Equipment { get; set; } = new();
         public InventoryGrid Inventory { get; set; } = new();
     }
 
