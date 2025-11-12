@@ -30,6 +30,28 @@ namespace NovaGM.Services
 
         private static string LlmDir => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "llm"));
 
+        private static readonly Dictionary<string, string[]> PreferredModelPrefixes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["controller"] = new[]
+            {
+                "phi3-3.8b-mini-4k-instruct",
+                "phi3.5",
+                "phi-2.7b"
+            },
+            ["narrator"] = new[]
+            {
+                "dolphin-llama3-8b",
+                "dolphin-phi",
+                "mistral-7b"
+            },
+            ["memory"] = new[]
+            {
+                "qwen3-0.6b",
+                "phi-2.7b",
+                "phi3-3.8b"
+            }
+        };
+
         private static string? FindFirstModelPath()
         {
             if (!Directory.Exists(LlmDir)) return null;
@@ -44,6 +66,28 @@ namespace NovaGM.Services
             return Directory.EnumerateFiles(LlmDir, $"{prefix}*.gguf", SearchOption.TopDirectoryOnly)
                             .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
                             .FirstOrDefault();
+        }
+
+        private static string? ResolveModelPath(string role, string fallbackPrefix)
+        {
+            // 1) Respect explicit selection from the Models window / config.
+            var assigned = ModelRegistry.ResolvePath(ModelRegistry.GetAssigned(role));
+            if (!string.IsNullOrWhiteSpace(assigned))
+                return assigned;
+
+            // 2) Look for well-known light-weight models so users don't need to rename files.
+            if (PreferredModelPrefixes.TryGetValue(role, out var candidates))
+            {
+                foreach (var candidate in candidates)
+                {
+                    var found = FindModelByPrefix(candidate);
+                    if (!string.IsNullOrWhiteSpace(found))
+                        return found;
+                }
+            }
+
+            // 3) Fall back to legacy prefix naming (controller.*, narrator.*, memory.*) or first model found.
+            return FindModelByPrefix(fallbackPrefix) ?? FindFirstModelPath();
         }
 
         private readonly JsonSerializerOptions _json = new()
@@ -99,6 +143,10 @@ namespace NovaGM.Services
             if (beat is null)
                 return "The scene hesitates, waiting for clarity. 1) Look around 2) Call out 3) Wait.<EOT>";
 
+            beat = await EnsureActionableBeatAsync(beat, playerText, facts, compact, genreContext, controllerSystem, planCts.Token)
+                   ?? beat;
+            var normalizedSuggestions = NormalizeSuggestions(beat.Suggestions);
+
             // Apply state changes
             _state.ApplyChanges(
                 beat.State_Changes?.Location,
@@ -110,7 +158,14 @@ namespace NovaGM.Services
             using var narrCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
             narrCts.CancelAfter(TimeSpan.FromSeconds(20));
             var narratorSystem = AppendGenreContext(Prompts.NarratorSystem, genreContext);
-            var narratorUser = Prompts.NarratorUser(JsonSerializer.Serialize(beat, _json), facts, compact, genreContext);
+            var narratorSuggestionHint = BuildSuggestionListForNarrator(normalizedSuggestions);
+            var narratorUser = Prompts.NarratorUser(
+                JsonSerializer.Serialize(beat, _json),
+                facts,
+                compact,
+                genreContext,
+                playerText,
+                narratorSuggestionHint);
             var narrationRaw = await AskSafeAsync(
                 _narrator,
                 narratorSystem,
@@ -121,6 +176,7 @@ namespace NovaGM.Services
             );
 
             var finalProse = TruncateAtEot(narrationRaw).Trim();
+            var memorySource = finalProse;
             if (string.IsNullOrWhiteSpace(finalProse))
                 finalProse = "Silence lingers. 1) Call out 2) Advance 3) Wait.";
 
@@ -142,6 +198,18 @@ namespace NovaGM.Services
                 if (!string.IsNullOrWhiteSpace(repaired))
                 {
                     finalProse = repaired;
+                    memorySource = repaired;
+                }
+            }
+
+            // If the controller produced explicit suggestions, surface them to players.
+            if (normalizedSuggestions.Length > 0)
+            {
+                var choiceText = BuildChoiceBlock(normalizedSuggestions);
+                if (!string.IsNullOrWhiteSpace(choiceText))
+                {
+                    finalProse = AppendChoices(finalProse, choiceText);
+                    onNarratorToken?.Invoke("\n\n" + choiceText);
                 }
             }
 
@@ -151,7 +219,7 @@ namespace NovaGM.Services
             var memJson = await AskSafeAsync(
                 _memory,
                 Prompts.MemorySystem,
-                Prompts.MemoryUser(playerText, finalProse),
+                Prompts.MemoryUser(playerText, memorySource),
                 memoCts.Token,
                 expectJson: true
             );
@@ -161,6 +229,82 @@ namespace NovaGM.Services
                 _state.AddFacts(delta.Facts);
 
             return finalProse;
+        }
+
+        private static string AppendChoices(string narration, string choiceText)
+        {
+            if (string.IsNullOrWhiteSpace(choiceText)) return narration;
+            var trimmedNarration = string.IsNullOrWhiteSpace(narration) ? "" : narration.TrimEnd();
+            return $"{trimmedNarration}\n\n{choiceText}".TrimEnd();
+        }
+
+        private static string BuildChoiceBlock(IEnumerable<string> suggestions)
+        {
+            var filtered = suggestions.ToArray();
+            if (filtered.Length == 0) return string.Empty;
+            var sb = new StringBuilder();
+            sb.AppendLine("Choices:");
+            for (var i = 0; i < filtered.Length; i++)
+            {
+                sb.AppendLine($"{i + 1}) {filtered[i]}");
+            }
+            sb.Append("You can pick one or describe your own action.");
+            return sb.ToString();
+        }
+
+        private static string? BuildSuggestionListForNarrator(string[] suggestions)
+        {
+            if (suggestions.Length == 0) return null;
+            var sb = new StringBuilder();
+            for (var i = 0; i < suggestions.Length; i++)
+            {
+                sb.AppendLine($"{i + 1}. {suggestions[i]}");
+            }
+            return sb.ToString().TrimEnd();
+        }
+
+        private static string[] NormalizeSuggestions(string[]? suggestions)
+        {
+            if (suggestions is null || suggestions.Length == 0) return Array.Empty<string>();
+            return suggestions
+                .Select(s => s?.Trim())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(4)
+                .ToArray();
+        }
+
+        private static bool HasUsableSuggestions(Beat beat)
+            => NormalizeSuggestions(beat.Suggestions).Length >= 2;
+
+        private async Task<Beat?> EnsureActionableBeatAsync(
+            Beat beat,
+            string playerText,
+            string facts,
+            string compact,
+            string genreContext,
+            string controllerSystem,
+            CancellationToken ct)
+        {
+            if (HasUsableSuggestions(beat))
+                return beat;
+
+            var serialized = JsonSerializer.Serialize(beat, _json);
+            var repaired = await TryRepairBeatAsync(
+                playerText,
+                facts,
+                compact,
+                serialized,
+                genreContext,
+                controllerSystem,
+                ct,
+                "You must describe the immediate environment and list at least three actionable, numbered suggestions.");
+
+            if (repaired is not null && HasUsableSuggestions(repaired))
+                return repaired;
+
+            return beat;
         }
 
         private async Task EnsureLoadedAsync()
@@ -175,7 +319,7 @@ namespace NovaGM.Services
                 gpuLayers = g < 0 ? 999 : g;
 
             // Choose per-role models (prefix match), else fall back to first gguf
-            var ctrlPath = FindModelByPrefix("controller") ?? FindFirstModelPath();
+            var ctrlPath = ResolveModelPath("controller", "controller");
 
             if (ctrlPath is null)
             {
@@ -183,8 +327,8 @@ namespace NovaGM.Services
                 return; // no models → stub mode (the app still runs)
             }
 
-            var memPath  = FindModelByPrefix("memory")   ?? ctrlPath;
-            var narrPath = FindModelByPrefix("narrator") ?? ctrlPath;
+            var memPath  = ResolveModelPath("memory",   "memory")   ?? ctrlPath;
+            var narrPath = ResolveModelPath("narrator", "narrator") ?? ctrlPath;
 
             // Load with role-appropriate context sizes
             await _controller.LoadAsync(ctrlPath, ctxSize: 1536, gpuLayers: gpuLayers);
@@ -316,10 +460,14 @@ namespace NovaGM.Services
             string badJson,
             string genreContext,
             string controllerSystem,
-            CancellationToken ct)
+            CancellationToken ct,
+            string? issueDescription = null)
         {
-            var repairUser = Prompts.ControllerUser(player, facts, compact, Prompts.ControllerSchema, genreContext) +
-                             $"\nThe previous JSON was malformed: ```{badJson}```\nReturn ONLY corrected JSON.";
+            var basePrompt = Prompts.ControllerUser(player, facts, compact, Prompts.ControllerSchema, genreContext);
+            var issueNote = string.IsNullOrWhiteSpace(issueDescription)
+                ? $"The previous JSON was malformed: ```{badJson}```\nReturn ONLY corrected JSON."
+                : $"Issue detected: {issueDescription}\nPrevious output:\n```{badJson}```\nReturn ONLY corrected JSON.";
+            var repairUser = basePrompt + "\n" + issueNote;
             var repaired = await AskSafeAsync(_controller, controllerSystem, repairUser, ct, expectJson: true);
             return TryDeserialize<Beat>(repaired);
         }

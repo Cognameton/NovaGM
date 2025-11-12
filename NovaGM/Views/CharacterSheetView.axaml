@@ -17,85 +17,67 @@
             CornerRadius="{DynamicResource Radius.MD}"
             Background="{DynamicResource Brush.SurfaceAlt}"
             Padding="10">
-      <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="0,4,0,0">
+      <Grid Margin="0,4,0,0"
+            ColumnDefinitions="Auto,180,Auto"
+            ColumnSpacing="12"
+            RowSpacing="10">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-        <!-- Head / Neck / Cloak -->
+        <!-- Top: Head / Neck / Cloak -->
         <StackPanel Grid.Row="0"
+                    Grid.ColumnSpan="3"
                     Orientation="Horizontal"
                     HorizontalAlignment="Center"
-                    Spacing="12"
-                    Margin="0,0,0,12">
-          <Button Content="{Binding Head}" MinWidth="96"/>
-          <Button Content="{Binding Neck}" MinWidth="96"/>
-          <Button Content="{Binding Cloak}" MinWidth="96"/>
+                    Spacing="12">
+          <Button Content="{Binding Head, TargetNullValue='Head Slot'}" MinWidth="120"/>
+          <Button Content="{Binding Neck, TargetNullValue='Neck Slot'}" MinWidth="120"/>
+          <Button Content="{Binding Cloak, TargetNullValue='Cloak Slot'}" MinWidth="120"/>
         </StackPanel>
 
-        <!-- Core silhouette band with adjacent slots -->
-        <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto"
-              VerticalAlignment="Stretch"
-              Margin="0,0,0,16">
+        <!-- Left column -->
+        <Button Grid.Row="1" Grid.Column="0" Content="{Binding Chest, TargetNullValue='Chest Slot'}" MinWidth="120"/>
+        <Button Grid.Row="2" Grid.Column="0" Content="{Binding Hands, TargetNullValue='Hands Slot'}" MinWidth="120"/>
+        <Button Grid.Row="3" Grid.Column="0" Content="{Binding MainHand, TargetNullValue='Main Hand'}" MinWidth="120"/>
+        <Button Grid.Row="4" Grid.Column="0" Content="{Binding Ring1, TargetNullValue='Ring Slot'}" MinWidth="120"/>
 
-          <StackPanel Grid.Column="0"
-                      Orientation="Vertical"
-                      VerticalAlignment="Center"
-                      Spacing="10"
-                      Margin="0,0,12,0">
-            <Button Content="{Binding Chest}" MinWidth="120"/>
-            <Button Content="{Binding Hands}" MinWidth="120"/>
-          </StackPanel>
+        <!-- Center silhouette -->
+        <Border Grid.Row="1"
+                Grid.Column="1"
+                Grid.RowSpan="4"
+                CornerRadius="12"
+                Background="#151922"
+                BorderBrush="#2B3448"
+                BorderThickness="1"
+                MinHeight="260"
+                VerticalAlignment="Stretch"
+                HorizontalAlignment="Stretch">
+          <TextBlock Text="Humanoid"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center"
+                     Foreground="{DynamicResource Brush.Muted}" />
+        </Border>
 
-          <Border Grid.Column="1"
-                  MinHeight="260"
-                  CornerRadius="12"
-                  Background="#151922"
-                  BorderBrush="#2B3448"
-                  BorderThickness="1"
-                  Margin="0"
-                  VerticalAlignment="Center"
-                  HorizontalAlignment="Stretch">
-            <TextBlock Text="Humanoid"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       Foreground="{DynamicResource Brush.Muted}" />
-          </Border>
+        <!-- Feet centered below silhouette -->
+        <Button Grid.Row="5"
+                Grid.Column="1"
+                Content="{Binding Feet, TargetNullValue='Feet Slot'}"
+                MinWidth="140"
+                HorizontalAlignment="Center"/>
 
-          <StackPanel Grid.Column="2"
-                      Orientation="Vertical"
-                      VerticalAlignment="Center"
-                      Spacing="10"
-                      Margin="12,0,0,0">
-            <Button Content="{Binding Belt}" MinWidth="120"/>
-            <Button Content="{Binding Legs}" MinWidth="120"/>
-          </StackPanel>
-        </Grid>
-
-        <!-- Feet slot -->
-        <StackPanel Grid.Row="2"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Center"
-                    Margin="0,0,0,20">
-          <Button Content="{Binding Feet}" MinWidth="140"/>
-        </StackPanel>
-
-        <!-- Weapons & rings -->
-        <Grid Grid.Row="3" ColumnDefinitions="*,*" HorizontalAlignment="Stretch">
-          <StackPanel Grid.Column="0"
-                      Orientation="Vertical"
-                      Spacing="10"
-                      HorizontalAlignment="Left">
-            <Button Content="{Binding MainHand}" MinWidth="120"/>
-            <Button Content="{Binding Ring1}" MinWidth="120"/>
-          </StackPanel>
-
-          <StackPanel Grid.Column="1"
-                      Orientation="Vertical"
-                      Spacing="10"
-                      HorizontalAlignment="Right">
-            <Button Content="{Binding OffHand}" MinWidth="120"/>
-            <Button Content="{Binding Ring2}" MinWidth="120"/>
-          </StackPanel>
-        </Grid>
-
+        <!-- Right column -->
+        <Button Grid.Row="1" Grid.Column="2" Content="{Binding Belt, TargetNullValue='Belt Slot'}" MinWidth="120"/>
+        <Button Grid.Row="2" Grid.Column="2" Content="{Binding Legs, TargetNullValue='Legs Slot'}" MinWidth="120"/>
+        <Button Grid.Row="3" Grid.Column="2" Content="{Binding OffHand, TargetNullValue='Off-hand'}" MinWidth="120"/>
+        <Button Grid.Row="4" Grid.Column="2" Content="{Binding Ring2, TargetNullValue='Ring Slot'}" MinWidth="120"/>
       </Grid>
     </Border>
 
