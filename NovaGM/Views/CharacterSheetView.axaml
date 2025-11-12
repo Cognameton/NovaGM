@@ -96,7 +96,9 @@
                 Grid.Column="1"
                 Content="{Binding Feet, TargetNullValue='Feet Slot'}"
                 MinWidth="140"
-                HorizontalAlignment="Center"/>
+                HorizontalAlignment="Center"
+                Click="EquipmentSlot_Click"
+                Tag="Feet"/>
 
         <!-- Right column -->
         <Button Grid.Row="1" Grid.Column="2" 
