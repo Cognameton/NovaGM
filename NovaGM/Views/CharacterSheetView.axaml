@@ -99,10 +99,26 @@
                 HorizontalAlignment="Center"/>
 
         <!-- Right column -->
-        <Button Grid.Row="1" Grid.Column="2" Content="{Binding Belt, TargetNullValue='Belt Slot'}" MinWidth="120"/>
-        <Button Grid.Row="2" Grid.Column="2" Content="{Binding Legs, TargetNullValue='Legs Slot'}" MinWidth="120"/>
-        <Button Grid.Row="3" Grid.Column="2" Content="{Binding OffHand, TargetNullValue='Off-hand'}" MinWidth="120"/>
-        <Button Grid.Row="4" Grid.Column="2" Content="{Binding Ring2, TargetNullValue='Ring Slot'}" MinWidth="120"/>
+        <Button Grid.Row="1" Grid.Column="2" 
+                Content="{Binding Belt, TargetNullValue='Belt Slot'}" 
+                MinWidth="120"
+                Click="EquipmentSlot_Click"
+                Tag="Belt"/>
+        <Button Grid.Row="2" Grid.Column="2" 
+                Content="{Binding Legs, TargetNullValue='Legs Slot'}" 
+                MinWidth="120"
+                Click="EquipmentSlot_Click"
+                Tag="Legs"/>
+        <Button Grid.Row="3" Grid.Column="2" 
+                Content="{Binding OffHand, TargetNullValue='Off-hand'}" 
+                MinWidth="120"
+                Click="EquipmentSlot_Click"
+                Tag="OffHand"/>
+        <Button Grid.Row="4" Grid.Column="2" 
+                Content="{Binding Ring2, TargetNullValue='Ring Slot'}" 
+                MinWidth="120"
+                Click="EquipmentSlot_Click"
+                Tag="Ring2"/>
       </Grid>
     </Border>
 
