@@ -215,6 +215,14 @@ msg.addEventListener('keypress', (e) => {{
                                    html.AppendLine(".sheet-stats div{background:#f0f4fb;border:1px solid #d9e2ef;border-radius:8px;padding:6px;text-align:center;}");
                                    html.AppendLine(".sheet-stats span{display:block;font-size:11px;color:#4a5d75;}");
                                    html.AppendLine(".sheet-stats strong{font-size:18px;color:#1f2d3d;}");
+                                   html.AppendLine(".equipment-section{margin-top:12px;}");
+                                   html.AppendLine(".equipment-title{font-weight:600;font-size:13px;margin-bottom:6px;color:#1f2d3d;}");
+                                   html.AppendLine(".equipment-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}");
+                                   html.AppendLine(".equipment-slot{border:1px solid #d9e2ef;border-radius:6px;background:#f7f9fb;min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px;font-size:12px;color:#1f2d3d;text-align:center;cursor:pointer;transition:background 0.2s;}");
+                                   html.AppendLine(".equipment-slot:hover{background:#eef1f7;}");
+                                   html.AppendLine(".equipment-slot.equipped{background:#e8f4fd;border-color:#4a90e2;font-weight:600;}");
+                                   html.AppendLine(".equipment-slot .slot-label{font-size:10px;color:#60708c;margin-bottom:2px;}");
+                                   html.AppendLine(".equipment-slot .item-name{font-size:11px;font-weight:600;color:#1f2d3d;}");
                                    html.AppendLine(".inventory-section{margin-top:12px;}");
                                    html.AppendLine(".inventory-title{font-weight:600;font-size:13px;margin-bottom:6px;color:#1f2d3d;}");
                                    html.AppendLine(".inventory-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}");
