@@ -31,6 +31,7 @@
 
     <PackageReference Include="LLamaSharp" />
     <PackageReference Include="LLamaSharp.Backend.Cpu" />
+    <PackageReference Include="LLamaSharp.Backend.Cuda12" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="QRCoder" />
   </ItemGroup>

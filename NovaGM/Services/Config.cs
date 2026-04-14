@@ -8,8 +8,9 @@ namespace NovaGM.Services
         public bool SingleRoom { get; set; } = true;
 
         // GPU
-        public bool UseGpu     { get; set; } = false;
-        public int  GpuLayers  { get; set; } = 0;
+        public bool UseGpu          { get; set; } = false;
+        public bool FullGpuOffload  { get; set; } = false;
+        public int  GpuLayers       { get; set; } = 0;
 
         // Multiplayer
         public int  MaxPlayers { get; set; } = 8;

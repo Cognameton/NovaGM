@@ -322,8 +322,10 @@ namespace NovaGM.Services
             if (_loadAttempted) return;
             _loadAttempted = true;
 
-            // GPU layers: parse env; negative (e.g., -1) means "max offload".
+            // GPU layers: read from UI config. Env var overrides for advanced users.
             int gpuLayers = 0;
+            if (Config.Current.UseGpu)
+                gpuLayers = Config.Current.FullGpuOffload ? 999 : Config.Current.GpuLayers;
             var env = Environment.GetEnvironmentVariable("NOVAGM_GPU_LAYERS");
             if (int.TryParse(env, out var g))
                 gpuLayers = g < 0 ? 999 : g;

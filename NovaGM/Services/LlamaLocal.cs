@@ -16,6 +16,7 @@ namespace NovaGM.Services
         private LLamaContext? _ctx;
         private ModelParams? _parms;
         private ChatSession? _chat;
+        private StatelessExecutor? _agentExecutor; // Reused across all CompleteAsync calls
         public bool IsLoaded => _chat is not null;
 
         public async Task LoadAsync(string ggufPath, int ctxSize = 2048, int gpuLayers = 0, int? threads = null)
@@ -30,6 +31,10 @@ namespace NovaGM.Services
             _weights = LLamaWeights.LoadFromFile(_parms);
             _ctx = _weights.CreateContext(_parms);
             _chat = new ChatSession(new InteractiveExecutor(_ctx));
+
+            // Pre-create a single StatelessExecutor for CompleteAsync so the ReAct
+            // loop reuses one context instead of allocating a new one per step.
+            _agentExecutor = new StatelessExecutor(_weights, _parms);
 
             Console.WriteLine($"[NovaGM] LLAMA loaded: {System.IO.Path.GetFileName(ggufPath)} ctx={ctxSize} gpu={gpuLayers}");
             await Task.CompletedTask;
@@ -86,9 +91,9 @@ namespace NovaGM.Services
             CancellationToken ct,
             Action<string>? onToken = null)
         {
-            if (_weights is null || _parms is null) return "";
+            if (_agentExecutor is null) return "";
 
-            var executor = new StatelessExecutor(_weights, _parms);
+            var executor = _agentExecutor;
             var infer = new InferenceParams
             {
                 MaxTokens = maxTokens,
@@ -126,6 +131,7 @@ namespace NovaGM.Services
         public void Dispose()
         {
             try { _chat = null; } catch { }
+            try { _agentExecutor = null; } catch { }
             try { _ctx?.Dispose(); } catch { }
             try { _weights?.Dispose(); } catch { }
             _ctx = null; _weights = null; _parms = null;

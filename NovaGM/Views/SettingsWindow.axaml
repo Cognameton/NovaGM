@@ -19,13 +19,16 @@
 
         <!-- GPU -->
         <StackPanel Spacing="6">
-          <CheckBox x:Name="ChkUseGpu" Content="Use GPU acceleration" />
+          <StackPanel Orientation="Horizontal" Spacing="16">
+            <CheckBox x:Name="ChkUseGpu" Content="Use GPU acceleration" />
+            <CheckBox x:Name="ChkFullGpuOffload" Content="Full GPU offload" />
+          </StackPanel>
           <Grid ColumnDefinitions="Auto,*,40" Margin="18,0,0,0" VerticalAlignment="Center">
             <TextBlock Grid.Column="0" Text="GPU layers:" VerticalAlignment="Center" Margin="0,0,8,0"/>
             <Slider Grid.Column="1" x:Name="SldGpuLayers" Minimum="0" Maximum="40" TickFrequency="1" IsSnapToTickEnabled="True"/>
             <TextBlock Grid.Column="2" x:Name="LblGpuLayers" Text="0" VerticalAlignment="Center" Margin="6,0,0,0"/>
           </Grid>
-          <TextBlock Text="Tip: Start low (e.g., 8–12). Higher = more VRAM, faster tokens."
+          <TextBlock Text="Tip: Full GPU offload pushes all layers to VRAM. Use the slider for partial offload."
                      Opacity="0.7" FontSize="12" Margin="18,0,0,0"/>
         </StackPanel>
 

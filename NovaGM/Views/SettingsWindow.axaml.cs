@@ -11,10 +11,11 @@ namespace NovaGM.Views
             InitializeComponent();
 
             // Load
-            ChkSingleRoom.IsChecked = Config.Current.SingleRoom;
-            ChkUseGpu.IsChecked     = Config.Current.UseGpu;
-            SldGpuLayers.Value      = Config.Current.GpuLayers;
-            LblGpuLayers.Text       = Config.Current.GpuLayers.ToString();
+            ChkSingleRoom.IsChecked    = Config.Current.SingleRoom;
+            ChkUseGpu.IsChecked        = Config.Current.UseGpu;
+            ChkFullGpuOffload.IsChecked = Config.Current.FullGpuOffload;
+            SldGpuLayers.Value         = Config.Current.GpuLayers;
+            LblGpuLayers.Text          = Config.Current.GpuLayers.ToString();
 
             SldNarrTokens.Value     = Config.Current.NarratorMaxTokens <= 0 ? 260 : Config.Current.NarratorMaxTokens;
             LblNarrTokens.Text      = ((int)SldNarrTokens.Value).ToString();
@@ -25,12 +26,19 @@ namespace NovaGM.Views
             ChkUseGpu.IsCheckedChanged += (_, __) =>
             {
                 var on = ChkUseGpu.IsChecked == true;
-                SldGpuLayers.IsEnabled = on;
+                ChkFullGpuOffload.IsEnabled = on;
+                SldGpuLayers.IsEnabled = on && ChkFullGpuOffload.IsChecked != true;
                 InfoText.Text = on
                     ? "Changes to GPU or LAN binding take effect after restart."
                     : "GPU disabled. Changes to LAN binding take effect after restart.";
             };
-            SldGpuLayers.IsEnabled = ChkUseGpu.IsChecked == true;
+            ChkFullGpuOffload.IsCheckedChanged += (_, __) =>
+            {
+                // When full offload is on, the layer slider is irrelevant
+                SldGpuLayers.IsEnabled = ChkUseGpu.IsChecked == true && ChkFullGpuOffload.IsChecked != true;
+            };
+            ChkFullGpuOffload.IsEnabled = ChkUseGpu.IsChecked == true;
+            SldGpuLayers.IsEnabled = ChkUseGpu.IsChecked == true && ChkFullGpuOffload.IsChecked != true;
 
             SldNarrTokens.PropertyChanged += (_, e) =>
             {
@@ -48,9 +56,10 @@ namespace NovaGM.Views
             if (!string.IsNullOrWhiteSpace(TxtPort.Text) && int.TryParse(TxtPort.Text, out var p) && p >= 1024 && p <= 65535)
                 port = p;
 
-            Config.Current.SingleRoom        = ChkSingleRoom.IsChecked == true;
-            Config.Current.UseGpu            = ChkUseGpu.IsChecked == true;
-            Config.Current.GpuLayers         = (int)SldGpuLayers.Value;
+            Config.Current.SingleRoom       = ChkSingleRoom.IsChecked == true;
+            Config.Current.UseGpu           = ChkUseGpu.IsChecked == true;
+            Config.Current.FullGpuOffload   = ChkFullGpuOffload.IsChecked == true;
+            Config.Current.GpuLayers        = (int)SldGpuLayers.Value;
             Config.Current.NarratorMaxTokens = (int)SldNarrTokens.Value;
             Config.Current.AllowLan          = ChkAllowLan.IsChecked == true;
             Config.Current.HttpPort          = port;
