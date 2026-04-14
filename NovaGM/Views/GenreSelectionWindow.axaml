@@ -14,8 +14,6 @@
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
     <!-- Title -->
@@ -39,19 +37,38 @@
     <!-- Genre Selection and Preview -->
     <Grid Grid.Row="2" ColumnDefinitions="Auto,*">
       
-      <!-- Genre Selection -->
-      <StackPanel Grid.Column="0" MinWidth="160" Margin="0,0,16,0">
-        <TextBlock Text="Genre:" FontWeight="SemiBold" Margin="0,0,0,10"/>
-        <RadioButton x:Name="FantasyRadio" Content="Fantasy" IsChecked="True" GroupName="Genre" Margin="0,5"/>
-        <RadioButton x:Name="SciFiRadio" Content="Sci-Fi" GroupName="Genre" Margin="0,5"/>
-        <RadioButton x:Name="HorrorRadio" Content="Horror" GroupName="Genre" Margin="0,5"/>
-        
-        <Separator Margin="0,20"/>
-        
-        <TextBlock Text="Custom Content:" FontWeight="SemiBold" Margin="0,0,0,10"/>
-        <Button x:Name="AddRaceButton" Content="Add Custom Race" Margin="0,5" HorizontalAlignment="Stretch"/>
-        <Button x:Name="AddClassButton" Content="Add Custom Class" Margin="0,5" HorizontalAlignment="Stretch"/>
-      </StackPanel>
+      <!-- Genre Selection + Custom Content (left column) -->
+      <Grid Grid.Column="0" MinWidth="160" Margin="0,0,16,0"
+            RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,*">
+        <TextBlock Grid.Row="0" Text="Genre:" FontWeight="SemiBold" Margin="0,0,0,10"/>
+        <RadioButton Grid.Row="1" x:Name="FantasyRadio" Content="Fantasy" IsChecked="True" GroupName="Genre" Margin="0,4"/>
+        <RadioButton Grid.Row="2" x:Name="SciFiRadio" Content="Sci-Fi" GroupName="Genre" Margin="0,4"/>
+        <RadioButton Grid.Row="3" x:Name="HorrorRadio" Content="Horror" GroupName="Genre" Margin="0,4"/>
+
+        <Separator Grid.Row="4" Margin="0,16"/>
+
+        <TextBlock Grid.Row="5" Text="Custom Content:" FontWeight="SemiBold" Margin="0,0,0,8"/>
+        <Button Grid.Row="6" x:Name="AddRaceButton" Content="Add Custom Race" Margin="0,0,0,6" HorizontalAlignment="Stretch"/>
+        <Button Grid.Row="7" x:Name="AddClassButton" Content="Add Custom Class" Margin="0,0,0,12" HorizontalAlignment="Stretch"/>
+
+        <!-- Added content list lives here — no overlap possible -->
+        <ScrollViewer Grid.Row="8" VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <TextBlock Text="Added:" FontWeight="SemiBold" Margin="0,0,0,6"/>
+            <ListBox x:Name="CustomContentList">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="views:CustomContentItem">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <TextBlock Text="{Binding Type}" FontWeight="SemiBold" MinWidth="52"/>
+                    <TextBlock Text=":" Opacity="0.5"/>
+                    <TextBlock Text="{Binding Name}" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </StackPanel>
+        </ScrollViewer>
+      </Grid>
 
       <!-- Preview Panel -->
       <ScrollViewer Grid.Column="1">
@@ -111,22 +128,8 @@
       </ScrollViewer>
     </Grid>
 
-    <!-- Custom Content List -->
-    <TextBlock Grid.Row="3" Text="Custom Content Added:" FontWeight="SemiBold" Margin="0,20,0,5"/>
-    <ListBox Grid.Row="4" x:Name="CustomContentList" MaxHeight="80" Margin="0,0,0,20">
-      <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="views:CustomContentItem">
-          <StackPanel Orientation="Horizontal">
-            <TextBlock Text="{Binding Type}" FontWeight="SemiBold" MinWidth="60"/>
-            <TextBlock Text=": "/>
-            <TextBlock Text="{Binding Name}"/>
-          </StackPanel>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
-
     <!-- Buttons -->
-    <StackPanel Grid.Row="5" 
+    <StackPanel Grid.Row="3"
                 Orientation="Horizontal" 
                 HorizontalAlignment="Right" 
                 Spacing="10">
