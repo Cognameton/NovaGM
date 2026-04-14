@@ -9,6 +9,7 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using NovaGM.Models;
+using NovaGM.Services.Agent;
 using NovaGM.Services.State;
 using NovaGM.Services.Retrieval; // Retriever, VectorStoreSqlite, HashEmbedder
 using NovaGM.Services.Multiplayer;
@@ -26,6 +27,7 @@ namespace NovaGM.Services
         public IStateStore StateStore => _state; // Expose for mission saving
 
         private Retriever? _retriever;
+        private ControllerAgent? _controllerAgent;
         private bool _loadAttempted;
 
         private static string LlmDir => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "llm"));
@@ -125,26 +127,34 @@ namespace NovaGM.Services
 
             var compact = _state.CompactSlice();
             var genreContext = BuildGenreContext();
-            var controllerSystem = AppendGenreContext(Prompts.ControllerSystem, genreContext);
 
-            // PLAN → Beat JSON (Controller)
+            // PLAN → Beat (Controller agent — ReAct loop with tools)
             using var planCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
-            planCts.CancelAfter(TimeSpan.FromSeconds(12));
-            var beatJson = await AskSafeAsync(
-                _controller,
-                controllerSystem,
-                Prompts.ControllerUser(playerText, facts, compact, Prompts.ControllerSchema, genreContext),
-                planCts.Token,
-                expectJson: true
-            );
+            planCts.CancelAfter(TimeSpan.FromSeconds(60)); // Agent needs more time than single-shot
+            Beat? beat = null;
+            if (_controllerAgent != null && _controller.IsLoaded)
+            {
+                beat = await _controllerAgent.RunAsync(
+                    playerText, facts, compact, genreContext,
+                    Prompts.ControllerSchema, planCts.Token);
+            }
 
-            var beat = TryDeserialize<Beat>(beatJson) 
+            // Fallback: single-shot controller if agent returned nothing
+            if (beat is null)
+            {
+                var controllerSystem = AppendGenreContext(Prompts.ControllerSystem, genreContext);
+                var beatJson = await AskSafeAsync(
+                    _controller,
+                    controllerSystem,
+                    Prompts.ControllerUser(playerText, facts, compact, Prompts.ControllerSchema, genreContext),
+                    planCts.Token,
+                    expectJson: true);
+                beat = TryDeserialize<Beat>(beatJson)
                        ?? await TryRepairBeatAsync(playerText, facts, compact, beatJson, genreContext, controllerSystem, planCts.Token);
+            }
+
             if (beat is null)
                 return "The scene hesitates, waiting for clarity. 1) Look around 2) Call out 3) Wait.<EOT>";
-
-            beat = await EnsureActionableBeatAsync(beat, playerText, facts, compact, genreContext, controllerSystem, planCts.Token)
-                   ?? beat;
             var normalizedSuggestions = NormalizeSuggestions(beat.Suggestions);
 
             // Apply state changes
@@ -330,14 +340,18 @@ namespace NovaGM.Services
             var memPath  = ResolveModelPath("memory",   "memory")   ?? ctrlPath;
             var narrPath = ResolveModelPath("narrator", "narrator") ?? ctrlPath;
 
-            // Load with role-appropriate context sizes
-            await _controller.LoadAsync(ctrlPath, ctxSize: 1536, gpuLayers: gpuLayers);
-            await _memory.LoadAsync(memPath,    ctxSize: 1024, gpuLayers: gpuLayers);
-            await _narrator.LoadAsync(narrPath, ctxSize: 2048, gpuLayers: gpuLayers);
+            // Controller gets a larger context: ReAct loop accumulates prompt across
+            // multiple THOUGHT/ACTION/OBSERVATION cycles before producing a Beat.
+            await _controller.LoadAsync(ctrlPath, ctxSize: 4096, gpuLayers: gpuLayers);
+            await _memory.LoadAsync(memPath,    ctxSize: 4096, gpuLayers: gpuLayers);
+            await _narrator.LoadAsync(narrPath, ctxSize: 4096, gpuLayers: gpuLayers);
 
             // Initialize the retriever (SQLite + hash-embeddings for now)
             var dbPath = Path.Combine(Paths.AppDataDir, "vec.db");
             _retriever = new Retriever(new VectorStoreSqlite(dbPath, dim: 384), new HashEmbedder(384));
+
+            // Controller agent wraps the controller LLM with tool use and persistent context
+            _controllerAgent = new ControllerAgent(_controller, _state, _retriever);
 
             Console.WriteLine($"[NovaGM] Models loaded:");
             Console.WriteLine($"  Controller: {ctrlPath}");

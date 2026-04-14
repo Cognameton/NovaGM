@@ -11,7 +11,7 @@ namespace NovaGM.Services.Multiplayer
 {
     public sealed class SessionSettings
     {
-        public string GenreContext { get; set; } = "sci-fi (near-future, Expanse/cyberpunk blend)";
+        public string GenreContext { get; set; } = string.Empty;
     }
 
     public sealed class PlayerInput
@@ -55,6 +55,9 @@ namespace NovaGM.Services.Multiplayer
         private GameCoordinator()
         {
             CurrentCode = GenerateCode();
+            // Clear the cached genre context whenever the GM changes genre so
+            // BuildGenreContext() re-derives it from GenreManager.Current.
+            GenreManager.GenreChanged += _ => Session.GenreContext = string.Empty;
         }
 
         public void ResetRoom() => CurrentCode = GenerateCode();

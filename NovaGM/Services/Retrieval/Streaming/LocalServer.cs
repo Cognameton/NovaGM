@@ -14,6 +14,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Collections.Generic;
+using NovaGM.Models;
 using NovaGM.Services;
 using NovaGM.Services.Multiplayer;
 
@@ -926,6 +928,19 @@ msg.addEventListener('keypress', (e) => {{
 
         private static string[] GetLanIPv4()
         {
+            try
+            {
+                // Use a UDP socket to determine which local IP the OS routes LAN traffic through.
+                // No data is sent; this just resolves the outbound interface.
+                using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+                socket.Connect("8.8.8.8", 80);
+                var primary = (socket.LocalEndPoint as IPEndPoint)?.Address?.ToString();
+                if (!string.IsNullOrEmpty(primary))
+                    return new[] { primary };
+            }
+            catch { }
+
+            // Fallback: return all non-loopback IPv4 addresses
             try
             {
                 return Dns.GetHostEntry(Dns.GetHostName())

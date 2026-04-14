@@ -14,6 +14,7 @@ namespace NovaGM.Services
     {
         private LLamaWeights? _weights;
         private LLamaContext? _ctx;
+        private ModelParams? _parms;
         private ChatSession? _chat;
         public bool IsLoaded => _chat is not null;
 
@@ -21,13 +22,13 @@ namespace NovaGM.Services
         {
             Dispose();
 
-            var parms = new ModelParams(ggufPath)
+            _parms = new ModelParams(ggufPath)
             {
                 ContextSize = (uint)ctxSize,
                 GpuLayerCount = gpuLayers > 0 ? gpuLayers : 0,
             };
-            _weights = LLamaWeights.LoadFromFile(parms);
-            _ctx = _weights.CreateContext(parms);
+            _weights = LLamaWeights.LoadFromFile(_parms);
+            _ctx = _weights.CreateContext(_parms);
             _chat = new ChatSession(new InteractiveExecutor(_ctx));
 
             Console.WriteLine($"[NovaGM] LLAMA loaded: {System.IO.Path.GetFileName(ggufPath)} ctx={ctxSize} gpu={gpuLayers}");
@@ -75,12 +76,59 @@ namespace NovaGM.Services
             return sb.ToString().Trim();
         }
 
+        /// Raw completion for agent ReAct loops. Manages its own full prompt string;
+        /// stops on OBSERVATION: (so the caller can inject the tool result) or on
+        /// FINAL_ANSWER closing brace. Uses StatelessExecutor so no chat history
+        /// accumulates — the caller is responsible for building the prompt.
+        public async Task<string> CompleteAsync(
+            string fullPrompt,
+            int maxTokens,
+            CancellationToken ct,
+            Action<string>? onToken = null)
+        {
+            if (_weights is null || _parms is null) return "";
+
+            var executor = new StatelessExecutor(_weights, _parms);
+            var infer = new InferenceParams
+            {
+                MaxTokens = maxTokens,
+                SamplingPipeline = new DefaultSamplingPipeline
+                {
+                    Temperature = 0.5f,  // Lower = more deterministic reasoning
+                    TopP = 0.9f
+                },
+                // Stop when the model hands back to the app (tool boundary or user turn)
+                AntiPrompts = new List<string> { "OBSERVATION:", "\nUser:", "\nHuman:" }
+            };
+
+            var sb = new StringBuilder();
+            var seenFinalAnswerStart = false;
+
+            await foreach (var tok in executor.InferAsync(fullPrompt, infer, ct))
+            {
+                if (ct.IsCancellationRequested) break;
+                if (string.IsNullOrEmpty(tok)) continue;
+
+                sb.Append(tok);
+                onToken?.Invoke(tok);
+
+                // Stop emitting once we close the FINAL_ANSWER JSON object
+                if (!seenFinalAnswerStart && sb.ToString().Contains("FINAL_ANSWER:", StringComparison.OrdinalIgnoreCase))
+                    seenFinalAnswerStart = true;
+
+                if (seenFinalAnswerStart && tok.Contains('}'))
+                    break;
+            }
+
+            return sb.ToString().Trim();
+        }
+
         public void Dispose()
         {
             try { _chat = null; } catch { }
             try { _ctx?.Dispose(); } catch { }
             try { _weights?.Dispose(); } catch { }
-            _ctx = null; _weights = null;
+            _ctx = null; _weights = null; _parms = null;
         }
     }
 }
