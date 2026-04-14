@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml;
 using NovaGM.Models;
 
 namespace NovaGM.Views
@@ -35,11 +34,6 @@ namespace NovaGM.Views
                     itemList.SelectedIndex = 0;
                 }
             }
-        }
-        
-        private void InitializeComponent()
-        {
-            AvaloniaXamlLoader.Load(this);
         }
         
         private void Equip_Click(object? sender, RoutedEventArgs e)

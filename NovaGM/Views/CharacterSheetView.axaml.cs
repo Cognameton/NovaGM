@@ -4,7 +4,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml;
 using NovaGM.Models;
 using NovaGM.Services;
 using NovaGM.ViewModels;
@@ -18,8 +17,6 @@ namespace NovaGM.Views
             InitializeComponent();
         }
 
-        private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
-        
         private async void EquipmentSlot_Click(object? sender, RoutedEventArgs e)
         {
             if (sender is not Button button) return;
