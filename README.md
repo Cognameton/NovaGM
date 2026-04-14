@@ -1,194 +1,98 @@
-# NovaGM 🎲
+# NovaGM
 
-**AI-Powered Tabletop RPG Game Master Tool**
-
-NovaGM is a hybrid Game Master tool and multiplayer host app for tabletop RPGs like D&D. It features local LLM integration, browser-based player clients, and comprehensive campaign management tools.
-
-## ✨ Features
-
-### 🖥️ Desktop Host App (GM)
-- **Cross-platform**: Windows & Linux support with distributable binaries
-- **AI Game Master**: Fully automated GM, narrator, and controller roles using local LLMs
-- **Campaign Management**: Character sheets, journal, glossary, story inventory
-- **Session Controls**: Start/end sessions, manage players, load scenarios
-- **Model Management**: Drop GGUF models into `/llm` folder, selectable in UI
-- **Dark Mode UI**: Clean, modern interface built with Avalonia
-
-### 📱 Browser Player Clients
-- **Jackbox-style Join**: 4-character room codes (e.g., "BCS3") + QR codes
-- **Multi-device**: Phones, tablets, PCs on same Wi-Fi network
-- **Character Creation**: Full character builder with auto-generation shortcuts
-- **Player Tools**: Inventory, character sheet, dice rolls, prompt input
-- **Real-time Updates**: Live narration streaming via Server-Sent Events
-
-### 🤖 AI Integration
-- **Local LLM**: LLamaSharp 0.25 with llama.cpp backend
-- **CPU First**: Optimized for CPU inference (GPU toggle for future)
-- **Multi-role AI**: Separate models for controller, narrator, and memory
-- **Extensible**: Plugin architecture for non-LLM modules
-
-### 🔧 Technical Features
-- **Embedded Server**: ASP.NET Core server inside desktop app
-- **SQLite Storage**: Persistent player and session data
-- **JSON/YAML Config**: All settings in `/config` directory
-- **Modular Architecture**: Clean separation of concerns
-- **Cross-platform Build**: Single command builds for Windows/Linux
-
-## 🚀 Quick Start
-
-### Prerequisites
-- .NET 8.0 SDK
-- Ubuntu 24.04+ or Windows 10+
-
-### Build from Source
-
-```bash
-# Clone repository
-git clone https://github.com/novagm/novagm.git
-cd novagm
-
-# Test build (Ubuntu)
-chmod +x scripts/test-build.sh
-./scripts/test-build.sh
-
-# Cross-platform build
-chmod +x build.sh
-./build.sh
-```
-
-### Install Models
-
-1. Download GGUF models (e.g., from Hugging Face)
-2. Place in `NovaGM/bin/Release/net8.0/llm/` directory
-3. Launch NovaGM and select models in Settings → Models
-
-### Run NovaGM
-
-```bash
-# From build directory
-cd NovaGM/bin/Release/net8.0
-./NovaGM
-
-# Or install .deb package (Linux)
-sudo dpkg -i dist/deb/novagm_1.0.0_amd64.deb
-novagm
-```
-
-## 🎮 How to Play
-
-### For Game Masters
-1. Launch NovaGM desktop app
-2. Configure AI models in Settings → Models
-3. Start new game or continue existing session
-4. Share room code with players
-5. Monitor player connections and manage session
-
-### For Players
-1. Connect to same Wi-Fi as GM
-2. Visit `http://GM_IP:5055` in browser
-3. Enter 4-character room code or scan QR code
-4. Create character and join the adventure!
-
-## 📁 Project Structure
-
-```
-NovaGM/
-├── Services/           # Core business logic
-│   ├── AgentOrchestrator.cs    # AI coordination
-│   ├── Multiplayer/            # Player management
-│   ├── Streaming/              # Real-time updates
-│   └── State/                  # Game state management
-├── Views/              # UI components
-├── Models/             # Data models
-├── Themes/             # UI styling
-├── config/             # Configuration files
-└── llm/                # AI model directory
-```
-
-## 🔧 Configuration
-
-### App Settings (`config/app-settings.json`)
-```json
-{
-  "NovaGM": {
-    "Server": {
-      "DefaultPort": 5055,
-      "AllowLAN": false,
-      "MaxPlayers": 8
-    },
-    "AI": {
-      "UseGPU": false,
-      "GPULayers": 0,
-      "ContextSize": 2048
-    }
-  }
-}
-```
-
-### Environment Variables
-- `NOVAGM_GPU_LAYERS`: GPU layers for LLM inference (-1 for max)
-- `NOVAGM_ALLOW_LAN`: Enable LAN access (true/false)
-
-## 🐳 Docker Support
-
-```bash
-# Build and run with Docker Compose
-docker-compose up --build
-
-# Access at http://localhost:5055
-```
-
-## 🛠️ Development
-
-### Build Requirements
-- .NET 8.0 SDK
-- Ubuntu 24.04+ or Windows 10+
-- Git
-
-### IDE Setup
-- Visual Studio 2022+ or VS Code
-- C# extension for VS Code
-- Avalonia extension for XAML support
-
-### Testing
-```bash
-# Run unit tests
-dotnet test
-
-# Test cross-platform build
-./scripts/test-build.sh
-```
-
-## 📦 Distribution
-
-### Windows
-- Single-file executable: `dist/win-x64/NovaGM.exe`
-- Portable, no installation required
-
-### Linux
-- Binary: `dist/linux-x64/NovaGM`
-- Debian package: `dist/deb/novagm_1.0.0_amd64.deb`
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [Avalonia UI](https://avaloniaui.net/) - Cross-platform .NET UI framework
-- [LLamaSharp](https://github.com/SciSharp/LLamaSharp) - .NET bindings for llama.cpp
-- [ASP.NET Core](https://docs.microsoft.com/en-us/aspnet/core/) - Web framework
-- [SQLite](https://www.sqlite.org/) - Embedded database
-- [QRCoder](https://github.com/codebude/QRCoder) - QR code generation
+An AI-powered tabletop RPG Game Master that runs on your own hardware. NovaGM narrates, manages characters, tracks the world state, and streams the story to every player's device in real time — no cloud required.
 
 ---
 
-**Ready to revolutionize your tabletop RPG experience? Download NovaGM and let AI be your Game Master! 🎲✨**
+## A Full GM, Not a Chatbot
+
+NovaGM uses a multi-agent architecture to separate the concerns of game logic and narrative, each handled by a purpose-selected local model.
+
+- **Controller** — lightweight model (Phi, Qwen) that interprets player input, updates game state, and decides what happens next
+- **Narrator** — larger, more expressive model (Mistral, Dolphin-LLaMA) that turns game events into prose and streams it live
+- **Memory agent** — compact model that distills session events into structured memory entries for long-term continuity
+- Models are auto-selected from a local `llm/` directory by role-matched naming convention; any GGUF model can be assigned to any role
+- All inference via [LLamaSharp](https://github.com/SciSharp/LLamaSharp) running llama.cpp locally
+
+---
+
+## Every Player on Their Own Device
+
+Players join from any browser on the local network — phone, tablet, laptop — with no app to install.
+
+- Embedded ASP.NET Core (Kestrel) web server serves the player HUD over HTTP
+- QR code generated at session start for instant join from mobile
+- Server-Sent Events (SSE) stream GM narration to all connected clients simultaneously
+- Room code validation on every player input; stale or forged codes are rejected
+- LAN binding configurable; defaults to localhost for single-machine play
+
+---
+
+## Full Character System
+
+Characters are created, persisted, and updated through both the GM desktop app and the player browser HUD.
+
+- Stats (STR/DEX/CON/INT/WIS/CHA), race, class, and level
+- AI-assisted character generation — random, or by class archetype (Fighter, Rogue, Mage)
+- Custom race and class definitions per session
+- 49-slot inventory grid with item quantities and per-item IDs
+- 12-slot equipment system (Head, Neck, Cloak, Chest, Hands, Belt, Legs, Feet, Main Hand, Off Hand, Ring x2)
+- Equipment stat modifiers applied to sheet display in real time
+- Equip/unequip from browser HUD without touching the GM desktop
+
+---
+
+## Genre-Aware Narration
+
+The GM's tone and content adapts to the genre of the session.
+
+- Built-in genres: Fantasy, Sci-Fi, Horror
+- Custom genre support with user-defined races, classes, and style rules
+- GenreStyleGuard enforces thematic consistency in generated output
+- Content packs loadable per genre for races, classes, and world lore
+
+---
+
+## Persistent World and Session Memory
+
+The world state survives between sessions.
+
+- Vector store (SQLite + cosine similarity) for semantic retrieval of past events and lore
+- Structured memory deltas written after each narrative beat
+- Full conversation history accessible to players via /history endpoint
+- Mission and scenario save/load from the GM desktop UI
+
+---
+
+## GM Desktop Application
+
+A full-featured desktop app for the GM built with Avalonia UI (.NET 8, cross-platform).
+
+- Live narration output panel with token streaming
+- Character sheet view with equipment slot grid and inventory
+- Player management window — join status, character overview per player
+- Model registry — browse, select, and assign local GGUF models to GM roles
+- Content packs browser for genre assets
+- Settings panel — port, LAN toggle, model paths, theme
+- Dice roller service supporting standard RPG notation (2d6+3, 1d20, etc.)
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Desktop UI | C#, .NET 8, Avalonia UI 11 |
+| AI inference | LLamaSharp (llama.cpp bindings for .NET) |
+| Web server | ASP.NET Core / Kestrel (embedded) |
+| Player UI | Vanilla HTML/CSS/JS, Server-Sent Events |
+| Vector memory | SQLite with cosine similarity retrieval |
+| QR code | ZXing.Net |
+| Data | System.Text.Json, custom model layer |
+
+---
+
+## License
+
+Copyright (c) 2025 Jeremy Findley. All rights reserved.
+Source code is available for viewing and evaluation only. See [LICENSE](LICENSE).
