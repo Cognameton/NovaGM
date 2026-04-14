@@ -148,7 +148,8 @@ namespace NovaGM.Services
                     controllerSystem,
                     Prompts.ControllerUser(playerText, facts, compact, Prompts.ControllerSchema, genreContext),
                     planCts.Token,
-                    expectJson: true);
+                    expectJson: true,
+                    maxTokens: 640);
                 beat = TryDeserialize<Beat>(beatJson)
                        ?? await TryRepairBeatAsync(playerText, facts, compact, beatJson, genreContext, controllerSystem, planCts.Token);
             }
@@ -231,7 +232,8 @@ namespace NovaGM.Services
                 Prompts.MemorySystem,
                 Prompts.MemoryUser(playerText, memorySource),
                 memoCts.Token,
-                expectJson: true
+                expectJson: true,
+                maxTokens: 256
             );
 
             var delta = TryDeserialize<MemoryDelta>(memJson);
@@ -368,7 +370,8 @@ namespace NovaGM.Services
             string user,
             CancellationToken ct,
             bool expectJson,
-            Action<string>? onToken = null)
+            Action<string>? onToken = null,
+            int maxTokens = 0)
         {
             if (!m.IsLoaded)
             {
@@ -417,7 +420,7 @@ namespace NovaGM.Services
 
             try
             {
-                raw = await m.AskAsync(sys, user, linked.Token, forwarder);
+                raw = await m.AskAsync(sys, user, linked.Token, forwarder, maxTokens);
             }
             catch (OperationCanceledException) when (linked.IsCancellationRequested && !ct.IsCancellationRequested)
             {
@@ -484,7 +487,7 @@ namespace NovaGM.Services
                 ? $"The previous JSON was malformed: ```{badJson}```\nReturn ONLY corrected JSON."
                 : $"Issue detected: {issueDescription}\nPrevious output:\n```{badJson}```\nReturn ONLY corrected JSON.";
             var repairUser = basePrompt + "\n" + issueNote;
-            var repaired = await AskSafeAsync(_controller, controllerSystem, repairUser, ct, expectJson: true);
+            var repaired = await AskSafeAsync(_controller, controllerSystem, repairUser, ct, expectJson: true, maxTokens: 640);
             return TryDeserialize<Beat>(repaired);
         }
 

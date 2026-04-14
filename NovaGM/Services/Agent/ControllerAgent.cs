@@ -19,11 +19,12 @@ namespace NovaGM.Services.Agent
     public sealed class ControllerAgent
     {
         // How many THOUGHT→ACTION→OBSERVATION cycles are allowed before forcing
-        // a FINAL_ANSWER. Raise this for larger/smarter models.
-        private const int MaxIterations = 6;
+        // a FINAL_ANSWER. Keep low for small models — more iterations waste context.
+        private const int MaxIterations = 4;
 
         // Tokens the LLM may emit per reasoning step.
-        private const int TokensPerStep = 320;
+        // Must be large enough for THOUGHT + full FINAL_ANSWER JSON (~400-600 tokens).
+        private const int TokensPerStep = 768;
 
         // How many past-turn summaries to keep in the rolling context.
         private const int MaxContextEntries = 8;
@@ -138,39 +139,39 @@ namespace NovaGM.Services.Agent
         }
 
         private static string BuildSystemPrompt(string genreContext, string schema) =>
-$@"You are the Controller for a tabletop RPG. Genre context: {genreContext}
+$@"You are the scene Controller for a tabletop RPG.
+Genre context: {genreContext}
 
-You reason step by step and call tools to ground decisions in actual game state.
-Do NOT invent dice results or player stats — use tools.
+Your job: read the player action and world state, reason briefly, then output FINAL_ANSWER.
 
-RESPONSE FORMAT:
-THOUGHT: <your reasoning>
-ACTION: <tool_name> {{""arg"": ""value""}}
+DEFAULT PATH — use this when you already have enough context:
+THOUGHT: <one sentence of reasoning>
+FINAL_ANSWER: {{""Title"":""..."",""Summary"":""..."",""Suggestions"":[""..."",""..."",""...""]}}
 
-The app executes the tool and replies:
-OBSERVATION: <result>
+TOOL PATH — use ONLY when you must roll dice or look up unknown game state:
+THOUGHT: <reasoning>
+ACTION: roll_dice {{""expr"":""2d6""}}
+[app replies: OBSERVATION: <result>]
+THOUGHT: <reasoning>
+FINAL_ANSWER: {{...}}
 
-When you have enough information, end with:
-THOUGHT: <final reasoning>
-FINAL_ANSWER: <JSON matching schema below>
+TOOLS (use sparingly):
+  roll_dice    {{""expr"":""2d6""}}
+  get_player   {{""name"":""PlayerName""}}
+  get_npc      {{""name"":""NpcName""}}
+  get_flags    {{}}
+  query_memory {{""q"":""search terms""}}
+  set_flag     {{""flag"":""flag_name""}}
+  update_npc   {{""name"":""NpcName"",""status"":""new status""}}
 
-AVAILABLE TOOLS:
-  roll_dice    {{""expr"": ""2d6""}}                     — roll dice; returns individual rolls + total
-  get_player   {{""name"": ""PlayerName""}}              — stats (STR/DEX/CON/INT/WIS/CHA, class, race, level)
-  get_npc      {{""name"": ""NpcName""}}                 — NPC status from world state
-  get_flags                                              — active world flags and conditions
-  query_memory {{""q"": ""what happened at the docks""}} — search session memory for relevant facts
-  set_flag     {{""flag"": ""bridge_destroyed""}}        — record a persistent world state flag
-  update_npc   {{""name"": ""Guard"", ""status"": ""..."" }} — update NPC disposition or status
-
-SCHEMA (FINAL_ANSWER must match):
+FINAL_ANSWER SCHEMA:
 {schema}
 
-Rules:
-- Roll dice for any outcome that depends on chance or player stats
-- FINAL_ANSWER.Suggestions must contain at least 3 numbered, concrete player options
-- Do not name the genre — show it through details and tone
-- Max {MaxIterations} tool calls per turn; produce FINAL_ANSWER before that limit";
+REQUIREMENTS:
+- Suggestions: at least 3 specific, concrete actions (not ""wait"" or ""look around"")
+- Do not name the genre — show it through tone and detail
+- Respond to what the player actually did; move the story forward
+- Max {MaxIterations} steps total; always reach FINAL_ANSWER within that limit";
 
         // ── Parsing ───────────────────────────────────────────────────────────
 

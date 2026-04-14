@@ -40,16 +40,18 @@ namespace NovaGM.Services
             await Task.CompletedTask;
         }
 
-        // Signature used by AgentOrchestrator: (sys, user, ct, onToken?)
-        public async Task<string> AskAsync(string sys, string user, CancellationToken ct, Action<string>? onToken = null)
+        // Signature used by AgentOrchestrator: (sys, user, ct, onToken?, maxTokens?)
+        // maxTokens=0 uses Config.NarratorMaxTokens; pass an explicit value for non-narrator roles.
+        public async Task<string> AskAsync(string sys, string user, CancellationToken ct, Action<string>? onToken = null, int maxTokens = 0)
         {
             if (_chat is null) return "";
 
             var sb = new StringBuilder();
             var prompt = sys + "\n\nUser:\n" + user + "\nAssistant:\n";
+            var resolvedTokens = maxTokens > 0 ? maxTokens : Math.Max(Config.Current.NarratorMaxTokens, 200);
             var infer = new InferenceParams
             {
-                MaxTokens = Math.Max(512, 240),
+                MaxTokens = resolvedTokens,
                 SamplingPipeline = new DefaultSamplingPipeline
                 {
                     Temperature = 0.6f,
