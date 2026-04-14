@@ -29,20 +29,19 @@ class Program
         var cudaDir   = Path.Combine(nativeDir, "cuda12");
         if (!Directory.Exists(cudaDir)) return;
 
-        // libggml.so (in cuda12) depends on libggml-cpu.so which lives in the CPU folder.
-        // Detect the best available AVX level and load it first.
-        var cpuDir = BestCpuDir(nativeDir);
-        if (cpuDir != null)
-            LoadLib(Path.Combine(cpuDir, "libggml-base.so")); // cpu folder also has base
-
-        // Full dependency order for the CUDA backend:
-        //   libggml-base.so  <- no local deps
-        //   libggml-cpu.so   <- needs libggml-base.so
-        //   libggml-cuda.so  <- needs libggml-base.so
-        //   libggml.so       <- needs libggml-base.so + libggml-cpu.so + libggml-cuda.so
-        //   libllama.so      <- needs libggml.so + libggml-base.so
-        //   libmtmd.so       <- needs libllama.so + libggml.so + libggml-base.so
+        // Full dependency order for the CUDA backend.
+        // Load libggml-base.so from cuda12 FIRST — avx2/libggml-cpu.so will find it
+        // by SONAME once it's in the process; do NOT load it from both folders or you
+        // get symbol conflicts from two copies of the same library.
+        //
+        //   libggml-base.so  (cuda12) <- no local deps
+        //   libggml-cpu.so   (avx2)   <- needs libggml-base.so  (finds cuda12 copy by SONAME)
+        //   libggml-cuda.so  (cuda12) <- needs libggml-base.so
+        //   libggml.so       (cuda12) <- needs libggml-base.so + libggml-cpu.so + libggml-cuda.so
+        //   libllama.so      (cuda12) <- needs libggml.so + libggml-base.so
+        //   libmtmd.so       (cuda12) <- needs libllama.so + libggml.so + libggml-base.so
         LoadLib(Path.Combine(cudaDir, "libggml-base.so"));
+        var cpuDir = BestCpuDir(nativeDir);
         if (cpuDir != null)
             LoadLib(Path.Combine(cpuDir, "libggml-cpu.so"));
         LoadLib(Path.Combine(cudaDir, "libggml-cuda.so"));

@@ -107,7 +107,8 @@ namespace NovaGM.Services
             };
 
             var sb = new StringBuilder();
-            var seenFinalAnswerStart = false;
+            var finalAnswerStart = -1; // index in sb where FINAL_ANSWER: was found
+            var braceDepth = 0;
 
             await foreach (var tok in executor.InferAsync(fullPrompt, infer, ct))
             {
@@ -117,13 +118,49 @@ namespace NovaGM.Services
                 sb.Append(tok);
                 onToken?.Invoke(tok);
 
-                // Stop emitting once we close the FINAL_ANSWER JSON object
-                if (!seenFinalAnswerStart && sb.ToString().Contains("FINAL_ANSWER:", StringComparison.OrdinalIgnoreCase))
-                    seenFinalAnswerStart = true;
+                var current = sb.ToString();
 
-                if (seenFinalAnswerStart && tok.Contains('}'))
-                    break;
+                // Locate the start of the FINAL_ANSWER JSON object once
+                if (finalAnswerStart < 0)
+                {
+                    var faIdx = current.IndexOf("FINAL_ANSWER:", StringComparison.OrdinalIgnoreCase);
+                    if (faIdx >= 0)
+                    {
+                        var braceIdx = current.IndexOf('{', faIdx);
+                        if (braceIdx >= 0)
+                        {
+                            finalAnswerStart = braceIdx;
+                            braceDepth = 0;
+                        }
+                    }
+                }
+
+                // Once we're inside the FINAL_ANSWER JSON, count braces to find
+                // the true closing } of the outermost object
+                if (finalAnswerStart >= 0)
+                {
+                    // Recount from finalAnswerStart on each token (sb only grows)
+                    braceDepth = 0;
+                    bool inString = false;
+                    bool escape = false;
+                    for (int ci = finalAnswerStart; ci < current.Length; ci++)
+                    {
+                        char c = current[ci];
+                        if (escape) { escape = false; continue; }
+                        if (c == '\\' && inString) { escape = true; continue; }
+                        if (c == '"') { inString = !inString; continue; }
+                        if (inString) continue;
+                        if (c == '{') braceDepth++;
+                        else if (c == '}')
+                        {
+                            braceDepth--;
+                            if (braceDepth == 0)
+                                goto done; // outermost object closed — we're done
+                        }
+                    }
+                }
             }
+            done:
 
             return sb.ToString().Trim();
         }
