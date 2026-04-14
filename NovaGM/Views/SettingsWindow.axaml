@@ -1,8 +1,9 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="NovaGM.Views.SettingsWindow"
-        Width="620" Height="420"
-        CanResize="False"
+        Width="640" Height="440"
+        MinWidth="520" MinHeight="380"
+        CanResize="True"
         Title="Settings — NovaGM">
 
   <Border Padding="16">
@@ -19,11 +20,11 @@
         <!-- GPU -->
         <StackPanel Spacing="6">
           <CheckBox x:Name="ChkUseGpu" Content="Use GPU acceleration" />
-          <StackPanel Orientation="Horizontal" Spacing="10" Margin="18,0,0,0" VerticalAlignment="Center">
-            <TextBlock Text="GPU layers:" VerticalAlignment="Center"/>
-            <Slider x:Name="SldGpuLayers" Minimum="0" Maximum="40" TickFrequency="1" IsSnapToTickEnabled="True" Width="220"/>
-            <TextBlock x:Name="LblGpuLayers" Text="0" Width="28" HorizontalAlignment="Left" />
-          </StackPanel>
+          <Grid ColumnDefinitions="Auto,*,40" Margin="18,0,0,0" VerticalAlignment="Center">
+            <TextBlock Grid.Column="0" Text="GPU layers:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <Slider Grid.Column="1" x:Name="SldGpuLayers" Minimum="0" Maximum="40" TickFrequency="1" IsSnapToTickEnabled="True"/>
+            <TextBlock Grid.Column="2" x:Name="LblGpuLayers" Text="0" VerticalAlignment="Center" Margin="6,0,0,0"/>
+          </Grid>
           <TextBlock Text="Tip: Start low (e.g., 8–12). Higher = more VRAM, faster tokens."
                      Opacity="0.7" FontSize="12" Margin="18,0,0,0"/>
         </StackPanel>
@@ -31,21 +32,22 @@
         <!-- Narration length -->
         <StackPanel Spacing="6">
           <TextBlock Text="Narration length (tokens)" />
-          <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-            <Slider x:Name="SldNarrTokens" Minimum="120" Maximum="360" TickFrequency="10" IsSnapToTickEnabled="True" Width="300"/>
-            <TextBlock x:Name="LblNarrTokens" Text="260" Width="40"/>
-          </StackPanel>
+          <Grid ColumnDefinitions="*,40" VerticalAlignment="Center">
+            <Slider Grid.Column="0" x:Name="SldNarrTokens" Minimum="120" Maximum="360" TickFrequency="10" IsSnapToTickEnabled="True"/>
+            <TextBlock Grid.Column="1" x:Name="LblNarrTokens" Text="260" VerticalAlignment="Center" Margin="6,0,0,0"/>
+          </Grid>
         </StackPanel>
 
         <!-- LAN hosting -->
         <StackPanel Spacing="6">
           <CheckBox x:Name="ChkAllowLan" Content="Allow LAN clients (bind to all interfaces)" />
-          <StackPanel Orientation="Horizontal" Spacing="10" Margin="18,0,0,0" VerticalAlignment="Center">
-            <TextBlock Text="Port:" VerticalAlignment="Center"/>
-            <TextBox x:Name="TxtPort" Width="80" Watermark="5055"/>
-            <!-- angle brackets must be escaped in XAML attributes -->
-            <TextBlock Text="Players visit http://&lt;your-LAN-IP&gt;:PORT (e.g., 192.168.1.23:5055)" Opacity="0.7" />
-          </StackPanel>
+          <Grid ColumnDefinitions="Auto,80,*" Margin="18,0,0,0" VerticalAlignment="Center">
+            <TextBlock Grid.Column="0" Text="Port:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <TextBox Grid.Column="1" x:Name="TxtPort" Watermark="5055"/>
+            <TextBlock Grid.Column="2" Text="Players visit http://&lt;your-LAN-IP&gt;:PORT"
+                       Opacity="0.7" VerticalAlignment="Center" Margin="10,0,0,0"
+                       TextWrapping="Wrap"/>
+          </Grid>
         </StackPanel>
 
         <TextBlock x:Name="InfoText"

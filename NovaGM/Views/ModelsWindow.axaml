@@ -2,7 +2,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="NovaGM.Views.ModelsWindow"
         Width="520" Height="260"
-        CanResize="False"
+        MinWidth="400"
+        CanResize="True"
         Title="Models — Assign Roles">
 
   <Border Padding="16">
@@ -11,13 +12,13 @@
 
       <Grid Grid.Row="1" Margin="0,12,0,0" RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="Auto,*" ColumnSpacing="10" RowSpacing="10">
         <TextBlock Grid.Row="0" Grid.Column="0" Text="Controller:" VerticalAlignment="Center"/>
-        <ComboBox  Grid.Row="0" Grid.Column="1" x:Name="CmbController"/>
+        <ComboBox  Grid.Row="0" Grid.Column="1" x:Name="CmbController" HorizontalAlignment="Stretch"/>
 
         <TextBlock Grid.Row="1" Grid.Column="0" Text="Narrator:" VerticalAlignment="Center"/>
-        <ComboBox  Grid.Row="1" Grid.Column="1" x:Name="CmbNarrator"/>
+        <ComboBox  Grid.Row="1" Grid.Column="1" x:Name="CmbNarrator" HorizontalAlignment="Stretch"/>
 
         <TextBlock Grid.Row="2" Grid.Column="0" Text="Memory:" VerticalAlignment="Center"/>
-        <ComboBox  Grid.Row="2" Grid.Column="1" x:Name="CmbMemory"/>
+        <ComboBox  Grid.Row="2" Grid.Column="1" x:Name="CmbMemory" HorizontalAlignment="Stretch"/>
       </Grid>
 
       <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">

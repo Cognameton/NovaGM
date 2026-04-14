@@ -21,7 +21,7 @@
                Margin="0,0,0,20"/>
 
     <!-- Player List -->
-    <Grid Grid.Row="1" ColumnDefinitions="300,*">
+    <Grid Grid.Row="1" ColumnDefinitions="260,*">
       
       <!-- Players List -->
       <Border Grid.Column="0" 
@@ -40,15 +40,18 @@
                         Padding="10"
                         Margin="0,2">
                   <StackPanel>
-                    <TextBlock Text="{Binding Name}" 
-                               FontWeight="SemiBold" 
-                               FontSize="14"/>
-                    <TextBlock Text="{Binding Status}" 
-                               FontSize="11" 
-                               Foreground="Gray"/>
-                    <TextBlock Text="{Binding CharacterSummary}" 
-                               FontSize="10" 
-                               Foreground="DarkBlue"
+                    <TextBlock Text="{Binding Name}"
+                               FontWeight="SemiBold"
+                               FontSize="14"
+                               TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding Status}"
+                               FontSize="11"
+                               Foreground="Gray"
+                               TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding CharacterSummary}"
+                               FontSize="10"
+                               Foreground="{DynamicResource Brush.Accent}"
+                               TextWrapping="Wrap"
                                Margin="0,2,0,0"/>
                   </StackPanel>
                 </Border>
@@ -57,7 +60,7 @@
           </ListBox>
           
           <!-- Player Actions -->
-          <StackPanel Margin="0,15,0,0" Spacing="5">
+          <StackPanel Margin="0,12,0,0" Spacing="8">
             <Button x:Name="ViewCharacterButton" 
                     Content="View Character Sheet" 
                     Click="OnViewCharacterClick"/>
@@ -86,7 +89,7 @@
             
             <!-- Character Sheet Content (populated dynamically) -->
             <StackPanel x:Name="CharacterSheetContent" IsVisible="False">
-              <TextBlock Text="Character Sheet" FontSize="16" FontWeight="Bold" Margin="0,0,0,15"/>
+              <TextBlock Text="Character Sheet" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
               
               <!-- Basic Info -->
               <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,0,0,15">

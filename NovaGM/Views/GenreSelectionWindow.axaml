@@ -3,9 +3,10 @@
         xmlns:views="clr-namespace:NovaGM.Views"
         x:Class="NovaGM.Views.GenreSelectionWindow"
         Title="Select Game Genre"
-        Width="600" Height="500"
+        Width="620" Height="520"
+        MinWidth="500" MinHeight="440"
         WindowStartupLocation="CenterOwner"
-        CanResize="False">
+        CanResize="True">
 
   <Grid Margin="20">
     <Grid.RowDefinitions>
@@ -36,10 +37,10 @@
     </Border>
 
     <!-- Genre Selection and Preview -->
-    <Grid Grid.Row="2" ColumnDefinitions="200,*">
+    <Grid Grid.Row="2" ColumnDefinitions="Auto,*">
       
       <!-- Genre Selection -->
-      <StackPanel Grid.Column="0" Margin="0,0,20,0">
+      <StackPanel Grid.Column="0" MinWidth="160" Margin="0,0,16,0">
         <TextBlock Text="Genre:" FontWeight="SemiBold" Margin="0,0,0,10"/>
         <RadioButton x:Name="FantasyRadio" Content="Fantasy" IsChecked="True" GroupName="Genre" Margin="0,5"/>
         <RadioButton x:Name="SciFiRadio" Content="Sci-Fi" GroupName="Genre" Margin="0,5"/>
