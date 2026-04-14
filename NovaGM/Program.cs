@@ -25,23 +25,59 @@ class Program
     {
         if (!OperatingSystem.IsLinux()) return;
 
-        var cudaDir = Path.Combine(AppContext.BaseDirectory,
-            "runtimes", "linux-x64", "native", "cuda12");
+        var nativeDir = Path.Combine(AppContext.BaseDirectory, "runtimes", "linux-x64", "native");
+        var cudaDir   = Path.Combine(nativeDir, "cuda12");
         if (!Directory.Exists(cudaDir)) return;
 
-        // Load in dependency order: base first, then consumers
-        string[] order = { "libggml-base.so", "libggml.so", "libggml-cuda.so", "libmtmd.so", "libllama.so" };
-        foreach (var name in order)
+        // libggml.so (in cuda12) depends on libggml-cpu.so which lives in the CPU folder.
+        // Detect the best available AVX level and load it first.
+        var cpuDir = BestCpuDir(nativeDir);
+        if (cpuDir != null)
+            LoadLib(Path.Combine(cpuDir, "libggml-base.so")); // cpu folder also has base
+
+        // Full dependency order for the CUDA backend:
+        //   libggml-base.so  <- no local deps
+        //   libggml-cpu.so   <- needs libggml-base.so
+        //   libggml-cuda.so  <- needs libggml-base.so
+        //   libggml.so       <- needs libggml-base.so + libggml-cpu.so + libggml-cuda.so
+        //   libllama.so      <- needs libggml.so + libggml-base.so
+        //   libmtmd.so       <- needs libllama.so + libggml.so + libggml-base.so
+        LoadLib(Path.Combine(cudaDir, "libggml-base.so"));
+        if (cpuDir != null)
+            LoadLib(Path.Combine(cpuDir, "libggml-cpu.so"));
+        LoadLib(Path.Combine(cudaDir, "libggml-cuda.so"));
+        LoadLib(Path.Combine(cudaDir, "libggml.so"));
+        LoadLib(Path.Combine(cudaDir, "libllama.so"));
+        LoadLib(Path.Combine(cudaDir, "libmtmd.so"));
+    }
+
+    /// Returns the path to the best CPU-level native subfolder available on this machine.
+    private static string? BestCpuDir(string nativeDir)
+    {
+        try
         {
-            var path = Path.Combine(cudaDir, name);
-            if (File.Exists(path))
+            var flags = File.ReadAllText("/proc/cpuinfo");
+            string[] candidates = flags.Contains("avx512") ? new[] { "avx512", "avx2", "avx", "noavx" }
+                                : flags.Contains("avx2")   ? new[] { "avx2",   "avx",  "noavx" }
+                                : flags.Contains(" avx ")  ? new[] { "avx",    "noavx" }
+                                :                            new[] { "noavx" };
+            foreach (var c in candidates)
             {
-                try { NativeLibrary.Load(path); }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[NovaGM] CUDA pre-load warning: {name} — {ex.Message}");
-                }
+                var dir = Path.Combine(nativeDir, c);
+                if (Directory.Exists(dir)) return dir;
             }
+        }
+        catch { }
+        return null;
+    }
+
+    private static void LoadLib(string path)
+    {
+        if (!File.Exists(path)) return;
+        try { NativeLibrary.Load(path); }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[NovaGM] CUDA pre-load warning: {Path.GetFileName(path)} — {ex.Message}");
         }
     }
 
