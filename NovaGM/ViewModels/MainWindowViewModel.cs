@@ -436,16 +436,6 @@ namespace NovaGM.ViewModels
                         Messages.Add(new Message("System", $"It is {playerId}'s turn.")));
             };
 
-            // Game halted — prompt CONTINUE
-            _turnEngine.ContinueRequired += () =>
-                Dispatcher.UIThread.Post(() =>
-                    Messages.Add(new Message("GM",
-                        "The story holds its breath, waiting. Type CONTINUE to resume.")));
-
-            _turnEngine.GameResumed += () =>
-                Dispatcher.UIThread.Post(() =>
-                    Messages.Add(new Message("GM", "The story stirs back to life...")));
-
             // GM-initiative turn: world advances after a full round
             _turnEngine.GmTurnRequired += async () =>
             {
@@ -500,21 +490,6 @@ namespace NovaGM.ViewModels
 
         private async Task HandleTurnAsync(string playerName, string text, LocalBroadcaster broadcaster)
         {
-            // CONTINUE resumes a halted game — handle before the lock
-            if (text.Trim().Equals("CONTINUE", StringComparison.OrdinalIgnoreCase))
-            {
-                await _turnEngine.ContinueAsync(_sessionCts.Token);
-                return;
-            }
-
-            // Reject all other input while halted
-            if (_turnEngine.IsHalted)
-            {
-                Dispatcher.UIThread.Post(() =>
-                    Messages.Add(new Message("GM", "The story is paused. Type CONTINUE to resume.")));
-                return;
-            }
-
             await _turnLock.WaitAsync();
             try
             {
@@ -605,9 +580,8 @@ namespace NovaGM.ViewModels
                     MessageHistoryService.AddMessage(new Models.Message("GM", gm.Content));
                 });
 
-                // Advance the turn engine (no-op in solo mode)
-                if (!isSolo)
-                    await _turnEngine.RecordActionAsync(actingId, _sessionCts.Token);
+                // Advance the turn engine
+                await _turnEngine.RecordActionAsync(actingId, _sessionCts.Token);
             }
             finally { _turnLock.Release(); }
         }

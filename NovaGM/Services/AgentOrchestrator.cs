@@ -142,10 +142,6 @@ namespace NovaGM.Services
             var genreContext = BuildGenreContext();
             var (facts, compact) = await BuildContextAsync("gm_turn", outerCt);
 
-            // Controller uses GM-initiative user prompt
-            using var planCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
-            planCts.CancelAfter(TimeSpan.FromSeconds(60));
-
             Beat? beat = null;
             var controllerSystem = AppendGenreContext(Prompts.ControllerSystem, genreContext);
 
@@ -153,7 +149,7 @@ namespace NovaGM.Services
             {
                 beat = await _controllerAgent.RunAsync(
                     Prompts.ControllerUserGmTurn(facts, compact, Prompts.ControllerSchema, genreContext, interruptReason),
-                    facts, compact, genreContext, Prompts.ControllerSchema, planCts.Token);
+                    facts, compact, genreContext, Prompts.ControllerSchema, outerCt);
             }
 
             if (beat is null)
@@ -162,7 +158,7 @@ namespace NovaGM.Services
                     _controller,
                     controllerSystem,
                     Prompts.ControllerUserGmTurn(facts, compact, Prompts.ControllerSchema, genreContext, interruptReason),
-                    planCts.Token,
+                    outerCt,
                     expectJson: true,
                     maxTokens: 768);
                 beat = TryDeserialize<Beat>(beatJson);
@@ -225,15 +221,12 @@ namespace NovaGM.Services
             CancellationToken outerCt,
             string? actingPlayerId = null)
         {
-            using var planCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
-            planCts.CancelAfter(TimeSpan.FromSeconds(60));
-
             Beat? beat = null;
             if (_controllerAgent != null && _controller.IsLoaded)
             {
                 beat = await _controllerAgent.RunAsync(
                     playerText, facts, compact, genreContext,
-                    Prompts.ControllerSchema, planCts.Token, actingPlayerId);
+                    Prompts.ControllerSchema, outerCt, actingPlayerId);
             }
 
             if (beat is null)
@@ -243,12 +236,12 @@ namespace NovaGM.Services
                     _controller,
                     controllerSystem,
                     Prompts.ControllerUser(playerText, facts, compact, Prompts.ControllerSchema, genreContext),
-                    planCts.Token,
+                    outerCt,
                     expectJson: true,
                     maxTokens: 768);
                 beat = TryDeserialize<Beat>(beatJson)
                        ?? await TryRepairBeatAsync(playerText, facts, compact, beatJson, genreContext,
-                              AppendGenreContext(Prompts.ControllerSystem, genreContext), planCts.Token);
+                              AppendGenreContext(Prompts.ControllerSystem, genreContext), outerCt);
             }
 
             return beat;

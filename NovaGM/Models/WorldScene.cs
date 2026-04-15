@@ -132,11 +132,5 @@ namespace NovaGM.Models
         public HashSet<string> Incapacitated { get; set; } = new();
 
         public int RoundNumber { get; set; } = 0;
-
-        /// <summary>How many consecutive rounds all players were idle (used for CONTINUE halt logic).</summary>
-        public int ConsecutiveIdleRounds { get; set; } = 0;
-
-        /// <summary>True when the game is halted awaiting a CONTINUE input.</summary>
-        public bool IsHalted { get; set; } = false;
     }
 }
