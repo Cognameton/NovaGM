@@ -19,7 +19,7 @@ namespace NovaGM.Services.Agent
             PropertyNameCaseInsensitive = true
         };
 
-        public static string Dispatch(
+        public static async Task<string> DispatchAsync(
             string toolName,
             string argsJson,
             IStateStore state,
@@ -33,20 +33,23 @@ namespace NovaGM.Services.Agent
                     : JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(argsJson, _json)
                       ?? new Dictionary<string, JsonElement>();
 
+                // query_memory is the only async tool
+                if (toolName.Trim().Equals("query_memory", StringComparison.OrdinalIgnoreCase))
+                    return await QueryMemoryAsync(args, state, retriever);
+
                 return toolName.ToLowerInvariant().Trim() switch
                 {
-                    "roll_dice"       => RollDice(args),
-                    "get_player"      => GetPlayer(args),
-                    "get_npc"         => GetNpc(args, state),
-                    "get_flags"       => GetFlags(state),
-                    "query_memory"    => QueryMemory(args, state, retriever),
-                    "set_flag"        => SetFlag(args, state),
-                    "update_npc"      => UpdateNpc(args, state),
-                    "get_scene"       => GetScene(state),
-                    "give_item"       => GiveItem(args, state, actingPlayerId),
-                    "add_scene_npc"   => AddSceneNpc(args, state),
-                    "add_scene_item"  => AddSceneItem(args, state),
-                    "scene_transition"=> SceneTransition(args, state),
+                    "roll_dice"        => RollDice(args),
+                    "get_player"       => GetPlayer(args),
+                    "get_npc"          => GetNpc(args, state),
+                    "get_flags"        => GetFlags(state),
+                    "set_flag"         => SetFlag(args, state),
+                    "update_npc"       => UpdateNpc(args, state),
+                    "get_scene"        => GetScene(state),
+                    "give_item"        => GiveItem(args, state, actingPlayerId),
+                    "add_scene_npc"    => AddSceneNpc(args, state),
+                    "add_scene_item"   => AddSceneItem(args, state),
+                    "scene_transition" => SceneTransition(args, state),
                     _ => $"Unknown tool '{toolName}'. Valid tools: roll_dice, get_player, get_npc, get_flags, query_memory, set_flag, update_npc, get_scene, give_item, add_scene_npc, add_scene_item, scene_transition"
                 };
             }
@@ -113,14 +116,21 @@ namespace NovaGM.Services.Agent
             return flags.Count == 0 ? "No active flags." : string.Join(", ", flags);
         }
 
-        private static string QueryMemory(Dictionary<string, JsonElement> args, IStateStore state, Retriever? retriever)
+        private static async Task<string> QueryMemoryAsync(Dictionary<string, JsonElement> args, IStateStore state, Retriever? retriever)
         {
             var q = GetString(args, "q") ?? "";
             if (retriever != null)
             {
-                var results = Task.Run(() => retriever.QueryTopKAsync(q, 5)).GetAwaiter().GetResult();
-                if (results.Count > 0)
-                    return string.Join("; ", results);
+                try
+                {
+                    var results = await retriever.QueryTopKAsync(q, 5).ConfigureAwait(false);
+                    if (results.Count > 0)
+                        return string.Join("; ", results);
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"[NovaGM] QueryMemory retriever failed: {ex.Message}");
+                }
             }
             var gs    = state.Load();
             var facts = gs.Facts.TakeLast(6).ToList();

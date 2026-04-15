@@ -77,7 +77,7 @@ namespace NovaGM.Services.Agent
                 var (toolName, toolArgs) = TryExtractAction(response);
                 if (toolName != null)
                 {
-                    var observation = ToolDispatcher.Dispatch(toolName, toolArgs ?? "{}", _state, _retriever, actingPlayerId);
+                    var observation = await ToolDispatcher.DispatchAsync(toolName, toolArgs ?? "{}", _state, _retriever, actingPlayerId);
                     prompt.AppendLine($"\nOBSERVATION: {observation}");
                     prompt.AppendLine("Assistant:");
                     continue;

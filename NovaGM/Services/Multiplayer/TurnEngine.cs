@@ -85,29 +85,44 @@ namespace NovaGM.Services.Multiplayer
         public void RemovePlayer(string playerId)
         {
             var key = Normalize(playerId);
-            var idx = _activePlayers.FindIndex(p => p.Equals(key, StringComparison.OrdinalIgnoreCase));
-            if (idx < 0) return;
-            _activePlayers.RemoveAt(idx);
-            _acted.Remove(key);
-            _passed.Remove(key);
-            _incapacitated.Remove(key);
-            if (_currentIndex >= _activePlayers.Count)
-                _currentIndex = 0;
-            PersistTurnState();
+            _lock.Wait();
+            try
+            {
+                var idx = _activePlayers.FindIndex(p => p.Equals(key, StringComparison.OrdinalIgnoreCase));
+                if (idx < 0) return;
+                _activePlayers.RemoveAt(idx);
+                _acted.Remove(key);
+                _passed.Remove(key);
+                _incapacitated.Remove(key);
+                if (_currentIndex >= _activePlayers.Count)
+                    _currentIndex = 0;
+                PersistTurnState();
+            }
+            finally { _lock.Release(); }
         }
 
         /// <summary>Mark a player as incapacitated — their turns are auto-passed until revived.</summary>
         public void Incapacitate(string playerId)
         {
-            _incapacitated.Add(Normalize(playerId));
-            PersistTurnState();
+            _lock.Wait();
+            try
+            {
+                _incapacitated.Add(Normalize(playerId));
+                PersistTurnState();
+            }
+            finally { _lock.Release(); }
         }
 
         /// <summary>Revive a player from incapacitation.</summary>
         public void Revive(string playerId)
         {
-            _incapacitated.Remove(Normalize(playerId));
-            PersistTurnState();
+            _lock.Wait();
+            try
+            {
+                _incapacitated.Remove(Normalize(playerId));
+                PersistTurnState();
+            }
+            finally { _lock.Release(); }
         }
 
         // ── Turn flow ─────────────────────────────────────────────────────────
@@ -216,10 +231,12 @@ namespace NovaGM.Services.Multiplayer
             var current = CurrentPlayerId;
             if (current is null) return;
 
-            // Auto-pass incapacitated players
+            // Auto-pass incapacitated players — fire-and-forget, but log any failure
             if (_incapacitated.Contains(current))
             {
-                _ = PassCurrentPlayerAsync();
+                _ = PassCurrentPlayerAsync().ContinueWith(
+                    t => Console.Error.WriteLine($"[TurnEngine] Auto-pass failed: {t.Exception?.GetBaseException().Message}"),
+                    TaskContinuationOptions.OnlyOnFaulted);
                 return;
             }
 

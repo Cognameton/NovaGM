@@ -376,34 +376,44 @@ namespace NovaGM.ViewModels
             // Consume LAN player inputs and track connected players
             _ = Task.Run(async () =>
             {
-                await foreach (var inp in coordinator.ReadInputsAsync(_sessionCts.Token))
+                try
                 {
-                    Dispatcher.UIThread.Post(() =>
+                    await foreach (var inp in coordinator.ReadInputsAsync(_sessionCts.Token))
                     {
-                        // Track presence (connected but may not have saved character yet)
-                        if (!ConnectedPlayers.Contains(inp.Player))
-                            ConnectedPlayers.Add(inp.Player);
-
-                        if (!RemotePlayers.Any(p => string.Equals(p.Name, inp.Player, StringComparison.OrdinalIgnoreCase)))
-                            RemotePlayers.Add(new RemotePlayerViewModel(inp.Player));
-
-                        // Show join message only when character is saved — not on first message
-                        if (coordinator.IsJoined(inp.Player) && _welcomedPlayers.Add(inp.Player))
+                        Dispatcher.UIThread.Post(() =>
                         {
-                            Messages.Add(new Message("System", $"'{inp.Player}' has joined the session."));
+                            // Track presence (connected but may not have saved character yet)
+                            if (!ConnectedPlayers.Contains(inp.Player))
+                                ConnectedPlayers.Add(inp.Player);
 
-                            // Register with TurnEngine now that the player is fully joined
-                            if (!_turnEngine.ActivePlayers.Contains(inp.Player))
+                            if (!RemotePlayers.Any(p => string.Equals(p.Name, inp.Player, StringComparison.OrdinalIgnoreCase)))
+                                RemotePlayers.Add(new RemotePlayerViewModel(inp.Player));
+
+                            // Show join message only when character is saved — not on first message
+                            if (coordinator.IsJoined(inp.Player) && _welcomedPlayers.Add(inp.Player))
                             {
-                                if (!_turnEngine.AddPlayer(inp.Player))
-                                    Messages.Add(new Message("System", $"Session is full ({TurnEngine.MaxActivePlayers} players). '{inp.Player}' may spectate."));
+                                Messages.Add(new Message("System", $"'{inp.Player}' has joined the session."));
+
+                                // Register with TurnEngine now that the player is fully joined
+                                if (!_turnEngine.ActivePlayers.Contains(inp.Player))
+                                {
+                                    if (!_turnEngine.AddPlayer(inp.Player))
+                                        Messages.Add(new Message("System", $"Session is full ({TurnEngine.MaxActivePlayers} players). '{inp.Player}' may spectate."));
+                                }
                             }
-                        }
 
-                        UpdateRemotePlayerFromCoordinator(inp.Player);
-                    });
+                            UpdateRemotePlayerFromCoordinator(inp.Player);
+                        });
 
-                    await HandleTurnAsync(inp.Player, inp.Text, broadcaster);
+                        await HandleTurnAsync(inp.Player, inp.Text, broadcaster);
+                    }
+                }
+                catch (OperationCanceledException) { /* normal shutdown */ }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"[NovaGM] Player input loop failed: {ex}");
+                    Dispatcher.UIThread.Post(() =>
+                        Messages.Add(new Message("System", "Lost connection to player network. Restart the session to reconnect.")));
                 }
             });
         }
@@ -910,29 +920,11 @@ namespace NovaGM.ViewModels
                 var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
                 
                 if (ownerWindow != null)
-                {
-#pragma warning disable CS4014
-                    exitDialog.ShowDialog(ownerWindow);
-#pragma warning restore CS4014
-                    // Wait for dialog to complete
-                    await Task.Run(() =>
-                    {
-                        while (exitDialog.IsVisible)
-                        {
-                            Thread.Sleep(50);
-                        }
-                    });
-                }
+                    await exitDialog.ShowDialog(ownerWindow);
                 else
                 {
                     exitDialog.Show();
-                    await Task.Run(() =>
-                    {
-                        while (exitDialog.IsVisible)
-                        {
-                            Thread.Sleep(50);
-                        }
-                    });
+                    while (exitDialog.IsVisible) await Task.Delay(50);
                 }
 
                 if (exitDialog.Result != true)
@@ -943,28 +935,11 @@ namespace NovaGM.ViewModels
                 // Step 2: Save session dialog
                 var saveDialog = new SaveSessionDialog();
                 if (ownerWindow != null)
-                {
-#pragma warning disable CS4014
-                    saveDialog.ShowDialog(ownerWindow);
-#pragma warning restore CS4014
-                    await Task.Run(() =>
-                    {
-                        while (saveDialog.IsVisible)
-                        {
-                            Thread.Sleep(50);
-                        }
-                    });
-                }
+                    await saveDialog.ShowDialog(ownerWindow);
                 else
                 {
                     saveDialog.Show();
-                    await Task.Run(() =>
-                    {
-                        while (saveDialog.IsVisible)
-                        {
-                            Thread.Sleep(50);
-                        }
-                    });
+                    while (saveDialog.IsVisible) await Task.Delay(50);
                 }
 
                 if (saveDialog.Result == true)
@@ -1058,28 +1033,11 @@ namespace NovaGM.ViewModels
 
             // Show countdown window
             if (ownerWindow != null)
-            {
-#pragma warning disable CS4014
-                countdownWindow.ShowDialog(ownerWindow);
-#pragma warning restore CS4014
-                await Task.Run(() =>
-                {
-                    while (countdownWindow.IsVisible)
-                    {
-                        Thread.Sleep(50);
-                    }
-                });
-            }
+                await countdownWindow.ShowDialog(ownerWindow);
             else
             {
                 countdownWindow.Show();
-                await Task.Run(() =>
-                {
-                    while (countdownWindow.IsVisible)
-                    {
-                        Thread.Sleep(50);
-                    }
-                });
+                while (countdownWindow.IsVisible) await Task.Delay(50);
             }
 
             if (countdownWindow.WasCancelled)
@@ -1149,7 +1107,12 @@ namespace NovaGM.ViewModels
         public RelayCommand(Func<object?, Task> async, Predicate<object?>? can = null)
         { _async = async; _can = can; }
         public bool CanExecute(object? parameter) => _can?.Invoke(parameter) ?? true;
-        public async void Execute(object? parameter) { if (_async is not null) await _async(parameter); }
+        public async void Execute(object? parameter)
+        {
+            if (_async is null) return;
+            try { await _async(parameter); }
+            catch (Exception ex) { Console.Error.WriteLine($"[NovaGM] Command error: {ex}"); }
+        }
         public event EventHandler? CanExecuteChanged { add { } remove { } }
     }
 }
