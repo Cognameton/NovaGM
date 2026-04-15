@@ -53,21 +53,36 @@
       <Grid ColumnDefinitions="*,Auto,200">
         
         <!-- Server Info -->
-        <StackPanel Grid.Column="0" 
-                    Orientation="Horizontal" 
+        <StackPanel Grid.Column="0"
+                    Orientation="Horizontal"
                     Spacing="12"
                     VerticalAlignment="Center">
           <TextBlock Text="Room:" VerticalAlignment="Center" FontWeight="SemiBold"/>
-          <TextBlock Text="{Binding RoomCode}" 
-                     VerticalAlignment="Center" 
-                     FontFamily="Consolas" 
+          <TextBlock Text="{Binding RoomCode}"
+                     VerticalAlignment="Center"
+                     FontFamily="Consolas"
                      FontWeight="Bold"
                      FontSize="14"/>
           <TextBlock Text="Players join at:" VerticalAlignment="Center"/>
-          <TextBlock Text="{Binding ServerUrl}" 
-                     VerticalAlignment="Center" 
+          <TextBlock Text="{Binding ServerUrl}"
+                     VerticalAlignment="Center"
                      FontFamily="Consolas"
                      FontSize="12"/>
+        </StackPanel>
+
+        <!-- Current turn indicator -->
+        <StackPanel Grid.Column="1"
+                    Orientation="Horizontal"
+                    Spacing="6"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    IsVisible="{Binding HasActiveTurn}">
+          <TextBlock Text="Turn:" FontSize="12" Foreground="{DynamicResource Brush.Muted}" VerticalAlignment="Center"/>
+          <TextBlock Text="{Binding CurrentTurnPlayer}"
+                     FontSize="12"
+                     FontWeight="Bold"
+                     Foreground="{DynamicResource Brush.AccentGm}"
+                     VerticalAlignment="Center"/>
         </StackPanel>
 
         <!-- Connected Players -->
@@ -101,22 +116,33 @@
       <!-- Session tab -->
       <TabItem Header="Session">
         <Grid RowDefinitions="*,Auto" Margin="10">
-          <ScrollViewer Grid.Row="0">
+          <ScrollViewer Grid.Row="0" x:Name="SessionScroll">
             <ItemsControl ItemsSource="{Binding Messages}">
               <ItemsControl.ItemTemplate>
-                <!-- compiled binding needs x:DataType -->
                 <DataTemplate x:DataType="vm:Message">
-                  <StackPanel Margin="0,0,0,8">
-                    <TextBlock Text="{Binding Role}" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding Content}" TextWrapping="Wrap"/>
-                  </StackPanel>
+                  <Border Margin="0,0,0,6"
+                          BorderThickness="3,0,0,0"
+                          BorderBrush="{Binding RoleAccent}"
+                          Padding="8,4">
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="{Binding Role}"
+                                 FontWeight="Bold"
+                                 FontSize="11"
+                                 Opacity="0.7"/>
+                      <TextBlock Text="{Binding Content}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                  </Border>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
           </ScrollViewer>
 
           <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
-            <TextBox Text="{Binding Input, Mode=TwoWay}" Watermark="Your action..." />
+            <TextBox Text="{Binding Input, Mode=TwoWay}" Watermark="Your action...">
+              <TextBox.KeyBindings>
+                <KeyBinding Gesture="Enter" Command="{Binding SendCommand}"/>
+              </TextBox.KeyBindings>
+            </TextBox>
             <Button Grid.Column="1"
                     Content="Send"
                     Margin="8,0,0,0"

@@ -6,12 +6,24 @@
   <Color x:Key="Color.Secondary">#4A90E2</Color>
   <Color x:Key="Color.Surface">#121417</Color>
   <Color x:Key="Color.SurfaceAlt">#1A1D22</Color>
+  <Color x:Key="Color.SurfaceDeep">#0D0F12</Color>
+  <Color x:Key="Color.Border">#2B3448</Color>
   <Color x:Key="Color.Text">#EAECEE</Color>
   <Color x:Key="Color.Muted">#A9B2BD</Color>
+  <Color x:Key="Color.AccentGm">#5A66FF</Color>
+  <Color x:Key="Color.AccentPlayer">#4A9E6A</Color>
+  <Color x:Key="Color.AccentSystem">#D4961A</Color>
 
-  <SolidColorBrush x:Key="Brush.Primary" Color="{DynamicResource Color.Primary}"/>
-  <SolidColorBrush x:Key="Brush.Surface" Color="{DynamicResource Color.Surface}"/>
-  <SolidColorBrush x:Key="Brush.Text" Color="{DynamicResource Color.Text}"/>
+  <SolidColorBrush x:Key="Brush.Primary"      Color="{DynamicResource Color.Primary}"/>
+  <SolidColorBrush x:Key="Brush.Surface"      Color="{DynamicResource Color.Surface}"/>
+  <SolidColorBrush x:Key="Brush.SurfaceAlt"   Color="{DynamicResource Color.SurfaceAlt}"/>
+  <SolidColorBrush x:Key="Brush.SurfaceDeep"  Color="{DynamicResource Color.SurfaceDeep}"/>
+  <SolidColorBrush x:Key="Brush.Border"       Color="{DynamicResource Color.Border}"/>
+  <SolidColorBrush x:Key="Brush.Text"         Color="{DynamicResource Color.Text}"/>
+  <SolidColorBrush x:Key="Brush.Muted"        Color="{DynamicResource Color.Muted}"/>
+  <SolidColorBrush x:Key="Brush.AccentGm"     Color="{DynamicResource Color.AccentGm}"/>
+  <SolidColorBrush x:Key="Brush.AccentPlayer" Color="{DynamicResource Color.AccentPlayer}"/>
+  <SolidColorBrush x:Key="Brush.AccentSystem" Color="{DynamicResource Color.AccentSystem}"/>
 
   <!-- Typography -->
   <x:Double x:Key="Font.Size.Body">14</x:Double>

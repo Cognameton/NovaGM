@@ -105,6 +105,22 @@ namespace NovaGM.ViewModels
         // Guards against starting the TurnEngine more than once.
         private bool _turnEngineStarted;
 
+        private string _currentTurnPlayer = "";
+        public string CurrentTurnPlayer
+        {
+            get => _currentTurnPlayer;
+            private set
+            {
+                if (_currentTurnPlayer != value)
+                {
+                    _currentTurnPlayer = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(HasActiveTurn));
+                }
+            }
+        }
+        public bool HasActiveTurn => !string.IsNullOrEmpty(_currentTurnPlayer);
+
         public MainWindowViewModel()
         {
             // Clear any existing history when starting new session
@@ -436,21 +452,28 @@ namespace NovaGM.ViewModels
         {
             var broadcaster = LocalBroadcaster.Instance;
 
-            // Announce whose turn it is (remote players only — hub player is self-evident)
+            // Announce whose turn it is; always update the turn indicator
             _turnEngine.TurnStarted += playerId =>
             {
-                var isHub = HubCharacters.Any(c =>
-                    c.Character.Name.Equals(playerId, StringComparison.OrdinalIgnoreCase));
-                if (!isHub)
-                    Dispatcher.UIThread.Post(() =>
-                        Messages.Add(new Message("System", $"It is {playerId}'s turn.")));
+                Dispatcher.UIThread.Post(() =>
+                {
+                    CurrentTurnPlayer = playerId;
+                    var isHub = HubCharacters.Any(c =>
+                        c.Character.Name.Equals(playerId, StringComparison.OrdinalIgnoreCase));
+                    if (!isHub)
+                        Messages.Add(new Message("System", $"It is {playerId}'s turn."));
+                });
             };
 
             // GM-initiative turn: world advances after a full round
             _turnEngine.GmTurnRequired += async () =>
             {
                 var gm = new Message("GM", "");
-                Dispatcher.UIThread.Post(() => Messages.Add(gm));
+                Dispatcher.UIThread.Post(() =>
+                {
+                    CurrentTurnPlayer = "GM";
+                    Messages.Add(gm);
+                });
                 broadcaster.Publish("GM: ");
 
                 var final = await _agent.RunGmTurnAsync(
@@ -1082,6 +1105,15 @@ namespace NovaGM.ViewModels
     {
         private string _content;
         public string Role { get; }
+
+        /// Left-border accent colour for this message type in the session chat.
+        public string RoleAccent => Role switch
+        {
+            "GM"     => "#5A66FF",  // primary blue — AI narration
+            "System" => "#D4961A",  // amber — engine events
+            _        => "#4A9E6A"   // green — player actions
+        };
+
         public string Content
         {
             get => _content;

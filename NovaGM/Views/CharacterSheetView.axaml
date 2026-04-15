@@ -38,49 +38,56 @@
                     Orientation="Horizontal"
                     HorizontalAlignment="Center"
                     Spacing="12">
-          <Button Content="{Binding Head, TargetNullValue='Head Slot'}" 
+          <Button Content="{Binding Head, TargetNullValue='Head Slot'}"
                   MinWidth="120"
                   Click="EquipmentSlot_Click"
-                  Tag="Head"/>
-          <Button Content="{Binding Neck, TargetNullValue='Neck Slot'}" 
+                  Tag="Head"
+                  ToolTip.Tip="Head slot — click to equip or change"/>
+          <Button Content="{Binding Neck, TargetNullValue='Neck Slot'}"
                   MinWidth="120"
                   Click="EquipmentSlot_Click"
-                  Tag="Neck"/>
-          <Button Content="{Binding Cloak, TargetNullValue='Cloak Slot'}" 
+                  Tag="Neck"
+                  ToolTip.Tip="Neck slot — click to equip or change"/>
+          <Button Content="{Binding Cloak, TargetNullValue='Cloak Slot'}"
                   MinWidth="120"
                   Click="EquipmentSlot_Click"
-                  Tag="Cloak"/>
+                  Tag="Cloak"
+                  ToolTip.Tip="Cloak slot — click to equip or change"/>
         </StackPanel>
 
         <!-- Left column -->
-        <Button Grid.Row="1" Grid.Column="0" 
-                Content="{Binding Chest, TargetNullValue='Chest Slot'}" 
+        <Button Grid.Row="1" Grid.Column="0"
+                Content="{Binding Chest, TargetNullValue='Chest Slot'}"
                 MinWidth="120"
                 Click="EquipmentSlot_Click"
-                Tag="Chest"/>
-        <Button Grid.Row="2" Grid.Column="0" 
-                Content="{Binding Hands, TargetNullValue='Hands Slot'}" 
+                Tag="Chest"
+                ToolTip.Tip="Chest slot — click to equip or change"/>
+        <Button Grid.Row="2" Grid.Column="0"
+                Content="{Binding Hands, TargetNullValue='Hands Slot'}"
                 MinWidth="120"
                 Click="EquipmentSlot_Click"
-                Tag="Hands"/>
-        <Button Grid.Row="3" Grid.Column="0" 
-                Content="{Binding MainHand, TargetNullValue='Main Hand'}" 
+                Tag="Hands"
+                ToolTip.Tip="Hands slot — click to equip or change"/>
+        <Button Grid.Row="3" Grid.Column="0"
+                Content="{Binding MainHand, TargetNullValue='Main Hand'}"
                 MinWidth="120"
                 Click="EquipmentSlot_Click"
-                Tag="MainHand"/>
-        <Button Grid.Row="4" Grid.Column="0" 
-                Content="{Binding Ring1, TargetNullValue='Ring Slot'}" 
+                Tag="MainHand"
+                ToolTip.Tip="Main hand — weapon or tool"/>
+        <Button Grid.Row="4" Grid.Column="0"
+                Content="{Binding Ring1, TargetNullValue='Ring Slot'}"
                 MinWidth="120"
                 Click="EquipmentSlot_Click"
-                Tag="Ring1"/>
+                Tag="Ring1"
+                ToolTip.Tip="Ring slot 1 — click to equip or change"/>
 
         <!-- Center silhouette -->
         <Border Grid.Row="1"
                 Grid.Column="1"
                 Grid.RowSpan="4"
                 CornerRadius="12"
-                Background="#151922"
-                BorderBrush="#2B3448"
+                Background="{DynamicResource Brush.SurfaceDeep}"
+                BorderBrush="{DynamicResource Brush.Border}"
                 BorderThickness="1"
                 MinHeight="260"
                 VerticalAlignment="Stretch"
@@ -98,29 +105,34 @@
                 MinWidth="140"
                 HorizontalAlignment="Center"
                 Click="EquipmentSlot_Click"
-                Tag="Feet"/>
+                Tag="Feet"
+                ToolTip.Tip="Feet slot — click to equip or change"/>
 
         <!-- Right column -->
-        <Button Grid.Row="1" Grid.Column="2" 
-                Content="{Binding Belt, TargetNullValue='Belt Slot'}" 
+        <Button Grid.Row="1" Grid.Column="2"
+                Content="{Binding Belt, TargetNullValue='Belt Slot'}"
                 MinWidth="120"
                 Click="EquipmentSlot_Click"
-                Tag="Belt"/>
-        <Button Grid.Row="2" Grid.Column="2" 
-                Content="{Binding Legs, TargetNullValue='Legs Slot'}" 
+                Tag="Belt"
+                ToolTip.Tip="Belt slot — click to equip or change"/>
+        <Button Grid.Row="2" Grid.Column="2"
+                Content="{Binding Legs, TargetNullValue='Legs Slot'}"
                 MinWidth="120"
                 Click="EquipmentSlot_Click"
-                Tag="Legs"/>
-        <Button Grid.Row="3" Grid.Column="2" 
-                Content="{Binding OffHand, TargetNullValue='Off-hand'}" 
+                Tag="Legs"
+                ToolTip.Tip="Legs slot — click to equip or change"/>
+        <Button Grid.Row="3" Grid.Column="2"
+                Content="{Binding OffHand, TargetNullValue='Off-hand'}"
                 MinWidth="120"
                 Click="EquipmentSlot_Click"
-                Tag="OffHand"/>
-        <Button Grid.Row="4" Grid.Column="2" 
-                Content="{Binding Ring2, TargetNullValue='Ring Slot'}" 
+                Tag="OffHand"
+                ToolTip.Tip="Off-hand — shield, secondary weapon, or tool"/>
+        <Button Grid.Row="4" Grid.Column="2"
+                Content="{Binding Ring2, TargetNullValue='Ring Slot'}"
                 MinWidth="120"
                 Click="EquipmentSlot_Click"
-                Tag="Ring2"/>
+                Tag="Ring2"
+                ToolTip.Tip="Ring slot 2 — click to equip or change"/>
       </Grid>
     </Border>
 
