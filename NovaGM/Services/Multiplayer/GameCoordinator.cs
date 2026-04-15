@@ -49,6 +49,12 @@ namespace NovaGM.Services.Multiplayer
         private readonly CancellationTokenSource _cts = new();
         private readonly ConcurrentDictionary<string, PlayerCharacter> _players = new();
 
+        /// <summary>
+        /// Tracks players who have completed character creation and are fully joined.
+        /// A player is added here when they save their character — NOT on first message.
+        /// </summary>
+        private readonly ConcurrentDictionary<string, bool> _joinedPlayers = new(StringComparer.OrdinalIgnoreCase);
+
         public string CurrentCode { get; private set; }
         public SessionSettings Session { get; } = new SessionSettings();
 
@@ -80,7 +86,21 @@ namespace NovaGM.Services.Multiplayer
                 pc.Inventory = existing.Inventory;
             }
             _players[key] = pc;
+
+            // Mark the player as fully joined now that their character is saved.
+            // This is the authoritative join moment — not when they send their first message.
+            _joinedPlayers[key] = true;
         }
+
+        /// <summary>Returns true if the player has completed character creation and is fully joined.</summary>
+        public bool IsJoined(string name) =>
+            _joinedPlayers.ContainsKey(NormalizeKey(name));
+
+        /// <summary>Returns the names of all fully-joined players (character saved).</summary>
+        public string[] GetJoinedPlayers() =>
+            _joinedPlayers.Keys
+                .Where(k => _players.ContainsKey(k))
+                .ToArray();
 
         public bool TryGetCharacter(string code, string name, out PlayerCharacter pc)
         {
@@ -134,6 +154,7 @@ namespace NovaGM.Services.Multiplayer
         public bool KickPlayer(string playerName)
         {
             var key = NormalizeKey(playerName);
+            _joinedPlayers.TryRemove(key, out _);
             return _players.TryRemove(key, out _);
         }
 

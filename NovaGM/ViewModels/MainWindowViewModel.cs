@@ -98,6 +98,12 @@ namespace NovaGM.ViewModels
         private readonly AgentOrchestrator _agent = new();
         private readonly SemaphoreSlim _turnLock = new(1, 1);
         private readonly InventoryService _inventoryService;
+        private readonly TurnEngine _turnEngine;
+        private readonly CancellationTokenSource _sessionCts = new();
+        // Tracks players already welcomed so the join message fires once on character save, not on first message.
+        private readonly HashSet<string> _welcomedPlayers = new(StringComparer.OrdinalIgnoreCase);
+        // Guards against starting the TurnEngine more than once.
+        private bool _turnEngineStarted;
 
         public MainWindowViewModel()
         {
@@ -127,6 +133,14 @@ namespace NovaGM.ViewModels
             _inventoryService.SaveInventory(InventoryKeys.ForHubCharacter(CharacterSheet.Character.Name), CharacterSheet.Character.Inventory);
             HubCharacters.Add(CharacterSheet);
             SelectedHubCharacter = CharacterSheet;
+
+            // TurnEngine — manages multi-player round cycle, idle timers, GM turns.
+            // NOT started here — starts on first player action so players have time to connect
+            // and create characters before the idle timer runs.
+            _turnEngine = new TurnEngine(_agent.StateStore);
+            WireTurnEngine();
+            // Register hub player; remote players register when they fully join (character saved)
+            _turnEngine.AddPlayer(CharacterSheet.Character.Name);
 
             // Minimal compendium placeholders
             Compendium.Add(new CompendiumEntry { Category = "Race",   Name = "Human",      Description = "Versatile and adaptable." });
@@ -184,15 +198,17 @@ namespace NovaGM.ViewModels
             // Menu commands
             NewGameCommand = new RelayCommand(_ =>
             {
-                // Reset genre manager for new game
+                // Reset genre manager and turn engine for new game
                 GenreManager.ResetForNewGame();
-                
+                _turnEngineStarted = false;
+                _welcomedPlayers.Clear();
+
                 Messages.Clear();
-                Messages.Add(new Message("GM", "New game started. Select a genre from the Genre menu, then set the scene or type an action to begin."));
-                
+                Messages.Add(new Message("GM", "New game started. Select a genre from the Genre menu, then type an action or describe the scene to begin."));
+
                 // Update compendium with default content
                 UpdateCompendiumForGenre();
-                
+
                 return Task.CompletedTask;
             });
 
@@ -360,19 +376,28 @@ namespace NovaGM.ViewModels
             // Consume LAN player inputs and track connected players
             _ = Task.Run(async () =>
             {
-                await foreach (var inp in coordinator.ReadInputsAsync(CancellationToken.None))
+                await foreach (var inp in coordinator.ReadInputsAsync(_sessionCts.Token))
                 {
-                    // Track connected players
                     Dispatcher.UIThread.Post(() =>
                     {
+                        // Track presence (connected but may not have saved character yet)
                         if (!ConnectedPlayers.Contains(inp.Player))
-                        {
                             ConnectedPlayers.Add(inp.Player);
-                            if (!RemotePlayers.Any(p => string.Equals(p.Name, inp.Player, StringComparison.OrdinalIgnoreCase)))
+
+                        if (!RemotePlayers.Any(p => string.Equals(p.Name, inp.Player, StringComparison.OrdinalIgnoreCase)))
+                            RemotePlayers.Add(new RemotePlayerViewModel(inp.Player));
+
+                        // Show join message only when character is saved — not on first message
+                        if (coordinator.IsJoined(inp.Player) && _welcomedPlayers.Add(inp.Player))
+                        {
+                            Messages.Add(new Message("System", $"'{inp.Player}' has joined the session."));
+
+                            // Register with TurnEngine now that the player is fully joined
+                            if (!_turnEngine.ActivePlayers.Contains(inp.Player))
                             {
-                                RemotePlayers.Add(new RemotePlayerViewModel(inp.Player));
+                                if (!_turnEngine.AddPlayer(inp.Player))
+                                    Messages.Add(new Message("System", $"Session is full ({TurnEngine.MaxActivePlayers} players). '{inp.Player}' may spectate."));
                             }
-                            Messages.Add(new Message("System", $"Player '{inp.Player}' joined the session."));
                         }
 
                         UpdateRemotePlayerFromCoordinator(inp.Player);
@@ -397,95 +422,192 @@ namespace NovaGM.ViewModels
             }
         }
 
+        private void WireTurnEngine()
+        {
+            var broadcaster = LocalBroadcaster.Instance;
+
+            // Announce whose turn it is (remote players only — hub player is self-evident)
+            _turnEngine.TurnStarted += playerId =>
+            {
+                var isHub = HubCharacters.Any(c =>
+                    c.Character.Name.Equals(playerId, StringComparison.OrdinalIgnoreCase));
+                if (!isHub)
+                    Dispatcher.UIThread.Post(() =>
+                        Messages.Add(new Message("System", $"It is {playerId}'s turn.")));
+            };
+
+            // Game halted — prompt CONTINUE
+            _turnEngine.ContinueRequired += () =>
+                Dispatcher.UIThread.Post(() =>
+                    Messages.Add(new Message("GM",
+                        "The story holds its breath, waiting. Type CONTINUE to resume.")));
+
+            _turnEngine.GameResumed += () =>
+                Dispatcher.UIThread.Post(() =>
+                    Messages.Add(new Message("GM", "The story stirs back to life...")));
+
+            // GM-initiative turn: world advances after a full round
+            _turnEngine.GmTurnRequired += async () =>
+            {
+                var gm = new Message("GM", "");
+                Dispatcher.UIThread.Post(() => Messages.Add(gm));
+                broadcaster.Publish("GM: ");
+
+                var final = await _agent.RunGmTurnAsync(
+                    _sessionCts.Token,
+                    onNarratorToken: chunk =>
+                    {
+                        Dispatcher.UIThread.Post(() => gm.Append(chunk));
+                        broadcaster.Publish(chunk);
+                    });
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (!string.IsNullOrEmpty(final) && !gm.Content.Equals(final))
+                        gm.Content = final;
+                    broadcaster.Publish("\n");
+                    if (!string.IsNullOrWhiteSpace(final))
+                        MessageHistoryService.AddMessage(new Models.Message("GM", final));
+                });
+            };
+
+            // Interrupt event: GM injects an unexpected beat (ambush, distress call, etc.)
+            _turnEngine.InterruptEventFired += async reason =>
+            {
+                var gm = new Message("GM", "");
+                Dispatcher.UIThread.Post(() => Messages.Add(gm));
+                broadcaster.Publish("GM: ");
+
+                var final = await _agent.RunGmTurnAsync(
+                    _sessionCts.Token,
+                    onNarratorToken: chunk =>
+                    {
+                        Dispatcher.UIThread.Post(() => gm.Append(chunk));
+                        broadcaster.Publish(chunk);
+                    },
+                    interruptReason: reason);
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (!string.IsNullOrEmpty(final) && !gm.Content.Equals(final))
+                        gm.Content = final;
+                    broadcaster.Publish("\n");
+                    if (!string.IsNullOrWhiteSpace(final))
+                        MessageHistoryService.AddMessage(new Models.Message("GM", final));
+                });
+            };
+        }
+
         private async Task HandleTurnAsync(string playerName, string text, LocalBroadcaster broadcaster)
         {
+            // CONTINUE resumes a halted game — handle before the lock
+            if (text.Trim().Equals("CONTINUE", StringComparison.OrdinalIgnoreCase))
+            {
+                await _turnEngine.ContinueAsync(_sessionCts.Token);
+                return;
+            }
+
+            // Reject all other input while halted
+            if (_turnEngine.IsHalted)
+            {
+                Dispatcher.UIThread.Post(() =>
+                    Messages.Add(new Message("GM", "The story is paused. Type CONTINUE to resume.")));
+                return;
+            }
+
             await _turnLock.WaitAsync();
             try
             {
-                // Start the game if this is the first turn
                 if (!GenreManager.Current.GameStarted)
                 {
                     GenreManager.StartGame();
-                }
-
-                // Handle GM input differently than player input
-                if (playerName == "GM")
-                {
-                    // GM input: This is a narrative prompt/instruction to the AI
-                    // Add GM prompt to local display
-                    var gmPrompt = new Message("GM", text);
-                    Dispatcher.UIThread.Post(() => {
-                        Messages.Add(gmPrompt);
-                        MessageHistoryService.AddMessage(new Models.Message("GM", text));
-                    });
-
-                    // Broadcast GM prompt to all connected players
-                    broadcaster.Publish($"GM: {text}\n");
-
-                    // Process the GM's prompt through the AI as a narrative instruction
-                    var aiGmResponse = new Message("GM", "");
-                    Dispatcher.UIThread.Post(() => Messages.Add(aiGmResponse));
-
-                    // Broadcast AI-GM response indicator
-                    broadcaster.Publish("GM: ");
-
-                    string final = await _agent.RunTurnAsync(
-                        $"GM instruction: {text}",
-                        default,
-                        onNarratorToken: chunk =>
-                        {
-                            Dispatcher.UIThread.Post(() => aiGmResponse.Append(chunk));
-                            broadcaster.Publish(chunk);
-                        }
-                    );
-
-                    Dispatcher.UIThread.Post(() =>
+                    // First action — start the turn engine now that the game is live
+                    if (!_turnEngineStarted)
                     {
-                        if (!string.IsNullOrEmpty(final) && !aiGmResponse.Content.Equals(final))
-                            aiGmResponse.Content = final;
-                        broadcaster.Publish("\n");
-                        // Add completed AI response to history
-                        MessageHistoryService.AddMessage(new Models.Message("GM", aiGmResponse.Content));
-                    });
+                        _turnEngineStarted = true;
+                        _ = _turnEngine.StartAsync(_sessionCts.Token);
+                    }
                 }
-                else
+
+                var isHubPlayer = playerName == "GM" ||
+                    HubCharacters.Any(c => c.Character.Name.Equals(playerName, StringComparison.OrdinalIgnoreCase));
+
+                // Remote player: must be fully joined and registered with TurnEngine
+                if (!isHubPlayer)
                 {
-                    // Player input: Standard player action processing
-                    // Add player message to GM display
-                    var playerMessage = new Message(playerName, text);
-                    Dispatcher.UIThread.Post(() => {
-                        Messages.Add(playerMessage);
-                        MessageHistoryService.AddMessage(new Models.Message(playerName, text));
-                    });
+                    if (!GameCoordinator.Instance.IsJoined(playerName))
+                        return; // Character not saved yet — ignore silently
 
-                    // Broadcast player message to all connected players
-                    broadcaster.Publish($"{playerName}: {text}\n");
-
-                    var gm = new Message("GM", "");
-                    Dispatcher.UIThread.Post(() => Messages.Add(gm));
-
-                    // Broadcast GM response indicator to all players
-                    broadcaster.Publish("GM: ");
-
-                    string final = await _agent.RunTurnAsync(
-                        text,
-                        default,
-                        onNarratorToken: chunk =>
-                        {
-                            Dispatcher.UIThread.Post(() => gm.Append(chunk));
-                            broadcaster.Publish(chunk);
-                        }
-                    );
-
-                    Dispatcher.UIThread.Post(() =>
+                    // Register with TurnEngine if not already (handles late joiners)
+                    if (!_turnEngine.ActivePlayers.Any(p => p.Equals(playerName, StringComparison.OrdinalIgnoreCase)))
                     {
-                        if (!string.IsNullOrEmpty(final) && !gm.Content.Equals(final))
-                            gm.Content = final;
-                        broadcaster.Publish("\n");
-                        // Add completed GM response to history
-                        MessageHistoryService.AddMessage(new Models.Message("GM", gm.Content));
-                    });
+                        if (!_turnEngine.AddPlayer(playerName))
+                        {
+                            Dispatcher.UIThread.Post(() =>
+                                Messages.Add(new Message("System",
+                                    $"Session is full. {playerName} may spectate only.")));
+                            return;
+                        }
+                    }
                 }
+
+                // In multi-player, enforce whose turn it is
+                var isSolo = _turnEngine.ActivePlayers.Count <= 1;
+                if (!isSolo && !isHubPlayer)
+                {
+                    var current = _turnEngine.CurrentPlayerId;
+                    if (!string.Equals(current, playerName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Dispatcher.UIThread.Post(() =>
+                            Messages.Add(new Message("System",
+                                $"Waiting for {current}'s turn.")));
+                        return;
+                    }
+                }
+
+                // Display player input
+                var displayName = playerName == "GM"
+                    ? HubCharacters.FirstOrDefault()?.Character.Name ?? "GM"
+                    : playerName;
+                var inputText = playerName == "GM" ? $"GM instruction: {text}" : text;
+                var actingId  = playerName == "GM"
+                    ? (HubCharacters.FirstOrDefault()?.Character.Name ?? "GM")
+                    : playerName;
+
+                var playerMessage = new Message(displayName, text);
+                Dispatcher.UIThread.Post(() =>
+                {
+                    Messages.Add(playerMessage);
+                    MessageHistoryService.AddMessage(new Models.Message(displayName, text));
+                });
+                broadcaster.Publish($"{displayName}: {text}\n");
+
+                // Stream GM response
+                var gm = new Message("GM", "");
+                Dispatcher.UIThread.Post(() => Messages.Add(gm));
+                broadcaster.Publish("GM: ");
+
+                var final = await _agent.RunTurnAsync(
+                    inputText,
+                    _sessionCts.Token,
+                    onNarratorToken: chunk =>
+                    {
+                        Dispatcher.UIThread.Post(() => gm.Append(chunk));
+                        broadcaster.Publish(chunk);
+                    },
+                    actingPlayerId: actingId);
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (!string.IsNullOrEmpty(final) && !gm.Content.Equals(final))
+                        gm.Content = final;
+                    broadcaster.Publish("\n");
+                    MessageHistoryService.AddMessage(new Models.Message("GM", gm.Content));
+                });
+
+                // Advance the turn engine (no-op in solo mode)
+                if (!isSolo)
+                    await _turnEngine.RecordActionAsync(actingId, _sessionCts.Token);
             }
             finally { _turnLock.Release(); }
         }

@@ -23,8 +23,8 @@ namespace NovaGM.Services.Agent
         private const int MaxIterations = 4;
 
         // Tokens the LLM may emit per reasoning step.
-        // Must be large enough for THOUGHT + full FINAL_ANSWER JSON (~400-600 tokens).
-        private const int TokensPerStep = 768;
+        // Must be large enough for THOUGHT + full FINAL_ANSWER JSON (~600-800 tokens).
+        private const int TokensPerStep = 896;
 
         // How many past-turn summaries to keep in the rolling context.
         private const int MaxContextEntries = 8;
@@ -52,7 +52,8 @@ namespace NovaGM.Services.Agent
             string compact,
             string genreContext,
             string schema,
-            CancellationToken ct)
+            CancellationToken ct,
+            string? actingPlayerId = null)
         {
             var prompt = BuildInitialPrompt(playerText, facts, compact, genreContext, schema);
             Beat? result = null;
@@ -76,7 +77,7 @@ namespace NovaGM.Services.Agent
                 var (toolName, toolArgs) = TryExtractAction(response);
                 if (toolName != null)
                 {
-                    var observation = ToolDispatcher.Dispatch(toolName, toolArgs ?? "{}", _state, _retriever);
+                    var observation = ToolDispatcher.Dispatch(toolName, toolArgs ?? "{}", _state, _retriever, actingPlayerId);
                     prompt.AppendLine($"\nOBSERVATION: {observation}");
                     prompt.AppendLine("Assistant:");
                     continue;
@@ -139,38 +140,46 @@ namespace NovaGM.Services.Agent
         }
 
         private static string BuildSystemPrompt(string genreContext, string schema) =>
-$@"You are the scene Controller for a tabletop RPG.
+$@"You are the Narrative Controller for a tabletop RPG — the mind that shapes the world.
 Genre context: {genreContext}
 
-Your job: read the player action and world state, reason briefly, then output FINAL_ANSWER.
+Think like a game master and author. Every action has consequence, weight, and narrative potential.
 
-DEFAULT PATH — use this when you already have enough context:
-THOUGHT: <one sentence of reasoning>
-FINAL_ANSWER: {{""Title"":""..."",""Summary"":""..."",""Suggestions"":[""..."",""..."",""...""]}}
+DEFAULT PATH — use when you have enough context:
+THOUGHT: <reason through consequence, consistency, narrative weight>
+FINAL_ANSWER: {{""Title"":""..."",""Summary"":""..."",""Mood"":""tense"",""Stakes"":""..."",""NarrativeNote"":""..."",""Suggestions"":[""..."",""..."",""...""]}}
 
-TOOL PATH — use ONLY when you must roll dice or look up unknown game state:
+TOOL PATH — use ONLY when you need game state you don't have:
 THOUGHT: <reasoning>
-ACTION: roll_dice {{""expr"":""2d6""}}
-[app replies: OBSERVATION: <result>]
+ACTION: get_scene {{}}
+[app replies: OBSERVATION: <scene contents>]
 THOUGHT: <reasoning>
 FINAL_ANSWER: {{...}}
 
-TOOLS (use sparingly):
-  roll_dice    {{""expr"":""2d6""}}
-  get_player   {{""name"":""PlayerName""}}
-  get_npc      {{""name"":""NpcName""}}
-  get_flags    {{}}
-  query_memory {{""q"":""search terms""}}
-  set_flag     {{""flag"":""flag_name""}}
-  update_npc   {{""name"":""NpcName"",""status"":""new status""}}
+TOOLS (use sparingly — only what you need):
+  roll_dice        {{""expr"":""2d6""}}
+  get_player       {{""name"":""PlayerName""}}
+  get_npc          {{""name"":""NpcName""}}
+  get_flags        {{}}
+  get_scene        {{}}
+  query_memory     {{""q"":""search terms""}}
+  set_flag         {{""flag"":""flag_name""}}
+  update_npc       {{""name"":""NpcName"",""status"":""new status""}}
+  give_item        {{""item_id"":""id"",""player_id"":""name""}}
+  add_scene_npc    {{""id"":""key"",""name"":""Name"",""tier"":""ambient|narrative"",""disposition"":""neutral"",""motivation"":""optional""}}
+  add_scene_item   {{""id"":""key"",""name"":""Name"",""tier"":""ambient|narrative"",""collectible"":true,""description"":""...""}}
+  scene_transition {{""destination"":""location name""}}
 
 FINAL_ANSWER SCHEMA:
 {schema}
 
 REQUIREMENTS:
-- Suggestions: at least 3 specific, concrete actions (not ""wait"" or ""look around"")
-- Do not name the genre — show it through tone and detail
-- Respond to what the player actually did; move the story forward
+- Mood: tense|mysterious|triumphant|dread|wonder|melancholic|urgent|grim|hopeful
+- Stakes: what is immediately at risk (life, secret, trust, time, opportunity)
+- NarrativeNote: specific private instruction to narrator (what detail to land on, what to feel)
+- Suggestions: 3+ distinct concrete actions hinting at different consequences
+- Do NOT name the genre — show it through tone, detail, lexicon
+- Plant a seed: name a person, object, or place that could return later
 - Max {MaxIterations} steps total; always reach FINAL_ANSWER within that limit";
 
         // ── Parsing ───────────────────────────────────────────────────────────

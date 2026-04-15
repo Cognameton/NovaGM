@@ -100,24 +100,108 @@ namespace NovaGM.Services
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
 
-        /// Run a full turn. If onNarratorToken is provided, narration text streams to UI and LAN clients.
+        /// Run a player-driven turn. If onNarratorToken is provided, narration streams to UI and LAN clients.
         public async Task<string> RunTurnAsync(
             string playerText,
             CancellationToken outerCt,
-            Action<string>? onNarratorToken = null)
+            Action<string>? onNarratorToken = null,
+            string? actingPlayerId = null)
         {
             await EnsureLoadedAsync();
+            var genreContext = BuildGenreContext();
+            var (facts, compact) = await BuildContextAsync(playerText, outerCt);
 
-            // Build facts using retriever + recent facts
-            var state = _state.Load();
+            // PLAN → Beat
+            var beat = await RunControllerAsync(
+                playerText, facts, compact, genreContext, outerCt, actingPlayerId);
+
+            if (beat is null)
+                return "The scene hesitates, waiting for clarity. 1) Look around 2) Call out 3) Wait.";
+
+            // Apply state changes (item pickup, flags, NPC deltas, scene transitions)
+            _state.ApplyChanges(
+                beat.State_Changes?.Location,
+                beat.State_Changes?.Flags_Add,
+                beat.State_Changes?.Npc_Delta,
+                beat.State_Changes?.Items_Give,
+                beat.State_Changes?.Items_Remove,
+                beat.State_Changes?.Transition_To,
+                actingPlayerId);
+
+            return await RunNarratorAndMemoryAsync(
+                beat, facts, compact, genreContext, playerText, outerCt, onNarratorToken);
+        }
+
+        /// Run a GM-initiative turn — the world advances without waiting for player input.
+        public async Task<string> RunGmTurnAsync(
+            CancellationToken outerCt,
+            Action<string>? onNarratorToken = null,
+            string? interruptReason = null)
+        {
+            await EnsureLoadedAsync();
+            var genreContext = BuildGenreContext();
+            var (facts, compact) = await BuildContextAsync("gm_turn", outerCt);
+
+            // Controller uses GM-initiative user prompt
+            using var planCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
+            planCts.CancelAfter(TimeSpan.FromSeconds(60));
+
+            Beat? beat = null;
+            var controllerSystem = AppendGenreContext(Prompts.ControllerSystem, genreContext);
+
+            if (_controllerAgent != null && _controller.IsLoaded)
+            {
+                beat = await _controllerAgent.RunAsync(
+                    Prompts.ControllerUserGmTurn(facts, compact, Prompts.ControllerSchema, genreContext, interruptReason),
+                    facts, compact, genreContext, Prompts.ControllerSchema, planCts.Token);
+            }
+
+            if (beat is null)
+            {
+                var beatJson = await AskSafeAsync(
+                    _controller,
+                    controllerSystem,
+                    Prompts.ControllerUserGmTurn(facts, compact, Prompts.ControllerSchema, genreContext, interruptReason),
+                    planCts.Token,
+                    expectJson: true,
+                    maxTokens: 768);
+                beat = TryDeserialize<Beat>(beatJson);
+            }
+
+            if (beat is null)
+                return string.Empty; // GM turn produced nothing — silently skip
+
+            _state.ApplyChanges(
+                beat.State_Changes?.Location,
+                beat.State_Changes?.Flags_Add,
+                beat.State_Changes?.Npc_Delta,
+                beat.State_Changes?.Items_Give,
+                beat.State_Changes?.Items_Remove,
+                beat.State_Changes?.Transition_To,
+                actingPlayerId: null);
+
+            var gmText = string.IsNullOrWhiteSpace(interruptReason)
+                ? "[GM advances the world]"
+                : interruptReason;
+
+            return await RunNarratorAndMemoryAsync(
+                beat, facts, compact, genreContext, gmText, outerCt, onNarratorToken);
+        }
+
+        // ── Shared pipeline helpers ───────────────────────────────────────────
+
+        private async Task<(string facts, string compact)> BuildContextAsync(
+            string queryText, CancellationToken ct)
+        {
+            var state       = _state.Load();
             var recentFacts = state.Facts.TakeLast(8).ToList();
             string facts;
 
             if (_retriever is not null)
             {
                 await _retriever.UpsertFacts(state.Facts);
-                var retrieved = await _retriever.QueryTopKAsync(playerText, 6);
-                var combined = retrieved.Concat(recentFacts).Distinct().Take(12).ToList();
+                var retrieved = await _retriever.QueryTopKAsync(queryText, 6);
+                var combined  = retrieved.Concat(recentFacts).Distinct().Take(12).ToList();
                 facts = string.Join("; ", combined);
             }
             else
@@ -125,21 +209,33 @@ namespace NovaGM.Services
                 facts = string.Join("; ", recentFacts);
             }
 
-            var compact = _state.CompactSlice();
-            var genreContext = BuildGenreContext();
+            // Append active hooks so the Controller can pick them up
+            if (state.Hooks.Count > 0)
+                facts += " | HOOKS: " + string.Join("; ", state.Hooks.TakeLast(5));
 
-            // PLAN → Beat (Controller agent — ReAct loop with tools)
+            var compact = _state.CompactSlice();
+            return (facts, compact);
+        }
+
+        private async Task<Beat?> RunControllerAsync(
+            string playerText,
+            string facts,
+            string compact,
+            string genreContext,
+            CancellationToken outerCt,
+            string? actingPlayerId = null)
+        {
             using var planCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
-            planCts.CancelAfter(TimeSpan.FromSeconds(60)); // Agent needs more time than single-shot
+            planCts.CancelAfter(TimeSpan.FromSeconds(60));
+
             Beat? beat = null;
             if (_controllerAgent != null && _controller.IsLoaded)
             {
                 beat = await _controllerAgent.RunAsync(
                     playerText, facts, compact, genreContext,
-                    Prompts.ControllerSchema, planCts.Token);
+                    Prompts.ControllerSchema, planCts.Token, actingPlayerId);
             }
 
-            // Fallback: single-shot controller if agent returned nothing
             if (beat is null)
             {
                 var controllerSystem = AppendGenreContext(Prompts.ControllerSystem, genreContext);
@@ -149,44 +245,52 @@ namespace NovaGM.Services
                     Prompts.ControllerUser(playerText, facts, compact, Prompts.ControllerSchema, genreContext),
                     planCts.Token,
                     expectJson: true,
-                    maxTokens: 640);
+                    maxTokens: 768);
                 beat = TryDeserialize<Beat>(beatJson)
-                       ?? await TryRepairBeatAsync(playerText, facts, compact, beatJson, genreContext, controllerSystem, planCts.Token);
+                       ?? await TryRepairBeatAsync(playerText, facts, compact, beatJson, genreContext,
+                              AppendGenreContext(Prompts.ControllerSystem, genreContext), planCts.Token);
             }
 
-            if (beat is null)
-                return "The scene hesitates, waiting for clarity. 1) Look around 2) Call out 3) Wait.<EOT>";
+            return beat;
+        }
+
+        private async Task<string> RunNarratorAndMemoryAsync(
+            Beat beat,
+            string facts,
+            string compact,
+            string genreContext,
+            string playerText,
+            CancellationToken outerCt,
+            Action<string>? onNarratorToken)
+        {
             var normalizedSuggestions = NormalizeSuggestions(beat.Suggestions);
 
-            // Apply state changes
-            _state.ApplyChanges(
-                beat.State_Changes?.Location,
-                beat.State_Changes?.Flags_Add,
-                beat.State_Changes?.Npc_Delta
-            );
-
-            // NARRATE → prose (stream tokens to UI if delegate is provided)
+            // NARRATE — with narrative signals from the Beat
             using var narrCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
-            narrCts.CancelAfter(TimeSpan.FromSeconds(20));
-            var narratorSystem = AppendGenreContext(Prompts.NarratorSystem, genreContext);
-            var narratorSuggestionHint = BuildSuggestionListForNarrator(normalizedSuggestions);
+            narrCts.CancelAfter(TimeSpan.FromSeconds(30));
+            var narratorSystem          = AppendGenreContext(Prompts.NarratorSystem, genreContext);
+            var narratorSuggestionHint  = BuildSuggestionListForNarrator(normalizedSuggestions);
             var narratorUser = Prompts.NarratorUser(
                 JsonSerializer.Serialize(beat, _json),
                 facts,
                 compact,
                 genreContext,
                 playerText,
-                narratorSuggestionHint);
+                mood:          beat.Mood,
+                stakes:        beat.Stakes,
+                narrativeNote: beat.NarrativeNote,
+                suggestionList: narratorSuggestionHint);
+
             var narrationRaw = await AskSafeAsync(
                 _narrator,
                 narratorSystem,
                 narratorUser,
                 narrCts.Token,
                 expectJson: false,
-                onToken: onNarratorToken
-            );
+                maxTokens: 512,
+                onToken: onNarratorToken);
 
-            var finalProse = TruncateAtEot(narrationRaw).Trim();
+            var finalProse   = TruncateAtEot(narrationRaw).Trim();
             var memorySource = finalProse;
             if (string.IsNullOrWhiteSpace(finalProse))
                 finalProse = "Silence lingers. 1) Call out 2) Advance 3) Wait.";
@@ -195,25 +299,18 @@ namespace NovaGM.Services
             {
                 var repairUser = narratorUser +
                     $"\nNote: You drifted off-genre ({reason}). Strictly align to the GENRE CONTEXT. Keep the same facts/outcomes. End with <EOT>.";
-
                 var repairRaw = await AskSafeAsync(
-                    _narrator,
-                    narratorSystem,
-                    repairUser,
-                    narrCts.Token,
-                    expectJson: false,
-                    onToken: null
-                );
-
+                    _narrator, narratorSystem, repairUser, narrCts.Token,
+                    expectJson: false, maxTokens: 512, onToken: null);
                 var repaired = TruncateAtEot(repairRaw).Trim();
                 if (!string.IsNullOrWhiteSpace(repaired))
                 {
-                    finalProse = repaired;
+                    finalProse   = repaired;
                     memorySource = repaired;
                 }
             }
 
-            // If the controller produced explicit suggestions, surface them to players.
+            // Surface choices to players
             if (normalizedSuggestions.Length > 0)
             {
                 var choiceText = BuildChoiceBlock(normalizedSuggestions);
@@ -224,21 +321,20 @@ namespace NovaGM.Services
                 }
             }
 
-            // MEMORY → new facts
+            // MEMORY — extract facts and hooks
             using var memoCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
-            memoCts.CancelAfter(TimeSpan.FromSeconds(6));
+            memoCts.CancelAfter(TimeSpan.FromSeconds(8));
             var memJson = await AskSafeAsync(
                 _memory,
                 Prompts.MemorySystem,
                 Prompts.MemoryUser(playerText, memorySource),
                 memoCts.Token,
                 expectJson: true,
-                maxTokens: 256
-            );
+                maxTokens: 320);
 
             var delta = TryDeserialize<MemoryDelta>(memJson);
-            if (delta?.Facts?.Count > 0)
-                _state.AddFacts(delta.Facts);
+            if (delta?.Facts?.Count > 0) _state.AddFacts(delta.Facts);
+            if (delta?.Hooks?.Count > 0) _state.AddHooks(delta.Hooks);
 
             return finalProse;
         }
