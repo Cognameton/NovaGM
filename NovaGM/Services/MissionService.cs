@@ -9,6 +9,9 @@ using NovaGM.Services.Packs;
 using NovaGM.Services.State;
 using NovaGM.ViewModels;
 
+// pack ID whitelist: letters, digits, underscore, hyphen only
+// [GeneratedRegex attribute not available in net8 static context here so compiled once below]
+
 namespace NovaGM.Services
 {
     /// <summary>
@@ -21,6 +24,10 @@ namespace NovaGM.Services
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
+
+        // Pack IDs from config must match this pattern before being used in paths.
+        private static readonly Regex _safePackId =
+            new Regex(@"^[a-zA-Z0-9_\-]+$", RegexOptions.Compiled);
 
         /// <summary>
         /// Save the current session as a reusable mission
@@ -167,18 +174,36 @@ namespace NovaGM.Services
         private static string GetActivePackMissionsDir()
         {
             var packId = PackManager.GetActiveId() ?? "classic";
+
+            // Validate packId against whitelist to prevent path traversal.
+            if (!_safePackId.IsMatch(packId))
+                packId = "classic";
+
             var baseDir = AppContext.BaseDirectory;
-            return Path.Combine(baseDir, "packs", packId, "missions");
+            var expectedBase = Path.GetFullPath(Path.Combine(baseDir, "packs")) +
+                               Path.DirectorySeparatorChar;
+            var missionsDir = Path.GetFullPath(Path.Combine(baseDir, "packs", packId, "missions"));
+
+            // Confirm the resolved path stays inside the packs directory.
+            if (!missionsDir.StartsWith(expectedBase, StringComparison.Ordinal))
+                missionsDir = Path.GetFullPath(Path.Combine(baseDir, "packs", "classic", "missions"));
+
+            return missionsDir;
         }
 
         private static string GenerateMissionId(string name)
         {
-            // Convert name to safe filename
+            // Convert name to safe filename — allow only a-z, 0-9, space, hyphen.
             var safeName = Regex.Replace(name.ToLowerInvariant(), @"[^a-z0-9\s\-]", "")
                                .Trim()
                                .Replace(' ', '-');
-            
-            if (string.IsNullOrWhiteSpace(safeName))
+
+            // Explicit guard: any remaining dots, slashes, or path-traversal sequences
+            // collapse to the fallback name.
+            if (string.IsNullOrWhiteSpace(safeName) ||
+                safeName.Contains("..") ||
+                safeName.Contains('/') ||
+                safeName.Contains('\\'))
                 safeName = "mission";
 
             // Add timestamp to ensure uniqueness

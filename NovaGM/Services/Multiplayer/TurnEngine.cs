@@ -17,6 +17,12 @@ namespace NovaGM.Services.Multiplayer
     ///   - Advance to the next player after each action or pass.
     ///   - Fire a GM-initiative turn after all players have acted or passed in a round.
     ///   - Raise InterruptEvent when the GM injects an unexpected narrative beat.
+    ///
+    /// Thread-safety contract:
+    ///   _lock guards all mutations of _activePlayers, _acted, _passed, _incapacitated,
+    ///   _currentIndex, _roundNumber, and _gmTurnInProgress.  External calls (GM turn,
+    ///   TurnStarted/TurnEnded events, PassCurrentPlayerAsync fire-and-forget) always
+    ///   happen AFTER the lock is released to prevent deadlocks.
     /// </summary>
     public sealed class TurnEngine : IDisposable
     {
@@ -46,8 +52,8 @@ namespace NovaGM.Services.Multiplayer
         private readonly HashSet<string> _passed = new(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _incapacitated = new(StringComparer.OrdinalIgnoreCase);
 
-        private int  _currentIndex   = 0;
-        private int  _roundNumber    = 0;
+        private int  _currentIndex    = 0;
+        private int  _roundNumber     = 0;
         private bool _gmTurnInProgress = false;
 
         public string? CurrentPlayerId =>
@@ -56,7 +62,35 @@ namespace NovaGM.Services.Multiplayer
             : null;
 
         public int RoundNumber => _roundNumber;
+
+        /// <summary>
+        /// Returns a live reference to the active-player list.
+        /// Use only from code that is already holding _lock, or where a
+        /// slightly-stale read is acceptable (e.g. logging, UI binding).
+        /// For concurrent callers use <see cref="IsPlayerActive"/> or
+        /// <see cref="ActivePlayerCount"/> instead.
+        /// </summary>
         public IReadOnlyList<string> ActivePlayers => _activePlayers;
+
+        /// <summary>Thread-safe check for whether a player is on the active roster.</summary>
+        public bool IsPlayerActive(string playerId)
+        {
+            var key = Normalize(playerId);
+            _lock.Wait();
+            try { return _activePlayers.Contains(key); }
+            finally { _lock.Release(); }
+        }
+
+        /// <summary>Thread-safe count of active players.</summary>
+        public int ActivePlayerCount
+        {
+            get
+            {
+                _lock.Wait();
+                try { return _activePlayers.Count; }
+                finally { _lock.Release(); }
+            }
+        }
 
         public TurnEngine(IStateStore store)
         {
@@ -74,11 +108,16 @@ namespace NovaGM.Services.Multiplayer
         {
             if (string.IsNullOrWhiteSpace(playerId)) return false;
             var key = Normalize(playerId);
-            if (_activePlayers.Contains(key, StringComparer.OrdinalIgnoreCase)) return true;
-            if (_activePlayers.Count >= MaxActivePlayers) return false;
-            _activePlayers.Add(key);
-            PersistTurnState();
-            return true;
+            _lock.Wait();
+            try
+            {
+                if (_activePlayers.Contains(key)) return true;
+                if (_activePlayers.Count >= MaxActivePlayers) return false;
+                _activePlayers.Add(key);
+                PersistTurnState();
+                return true;
+            }
+            finally { _lock.Release(); }
         }
 
         /// <summary>Remove a player from the active roster.</summary>
@@ -143,34 +182,40 @@ namespace NovaGM.Services.Multiplayer
         public async Task<bool> RecordActionAsync(string playerId, CancellationToken ct = default)
         {
             var key = Normalize(playerId);
-            if (!key.Equals(Normalize(CurrentPlayerId ?? ""), StringComparison.OrdinalIgnoreCase))
-                return false;
 
+            // Acquire the lock BEFORE reading CurrentPlayerId to avoid a TOCTOU race:
+            // another thread could advance the turn between our check and our state mutation.
             await _lock.WaitAsync(ct);
             try
             {
+                if (!key.Equals(Normalize(CurrentPlayerId ?? ""), StringComparison.OrdinalIgnoreCase))
+                    return false;
                 _acted.Add(key);
-                TurnEnded?.Invoke(key);
-                await AdvanceAsync(ct);
             }
             finally { _lock.Release(); }
 
+            // Events and advance run outside the lock to prevent deadlock
+            // (AdvanceAsync → RunGmTurnAsync → BeginCurrentPlayerTurn → PassCurrentPlayerAsync → _lock).
+            TurnEnded?.Invoke(key);
+            await AdvanceAsync(ct);
             return true;
         }
 
         /// <summary>Force-pass the current player's turn (incapacitation or explicit pass).</summary>
         public async Task PassCurrentPlayerAsync(CancellationToken ct = default)
         {
+            string? key;
             await _lock.WaitAsync(ct);
             try
             {
-                var key = CurrentPlayerId;
+                key = CurrentPlayerId;
                 if (key is null) return;
                 _passed.Add(key);
-                TurnEnded?.Invoke(key);
-                await AdvanceAsync(ct);
             }
             finally { _lock.Release(); }
+
+            TurnEnded?.Invoke(key);
+            await AdvanceAsync(ct);
         }
 
         /// <summary>
@@ -185,54 +230,81 @@ namespace NovaGM.Services.Multiplayer
 
         // ── Internal ──────────────────────────────────────────────────────────
 
+        // Called WITHOUT holding _lock. Acquires the lock only for state mutations,
+        // then releases before any external calls.
         private async Task AdvanceAsync(CancellationToken ct)
         {
-            if (_activePlayers.Count == 0) return;
-
-            _currentIndex = (_currentIndex + 1) % _activePlayers.Count;
-
-            if (_currentIndex == 0)
-                await EndRoundAsync(ct);
-            else
-                BeginCurrentPlayerTurn();
-        }
-
-        private async Task EndRoundAsync(CancellationToken ct)
-        {
-            _roundNumber++;
-            _acted.Clear();
-            _passed.Clear();
-            PersistTurnState();
-
-            // GM advances the world after every complete round
-            if (!_gmTurnInProgress && GmTurnRequired is not null)
+            bool endOfRound = false;
+            await _lock.WaitAsync(ct);
+            try
             {
-                _gmTurnInProgress = true;
-                try
+                if (_activePlayers.Count == 0) return;
+                _currentIndex = (_currentIndex + 1) % _activePlayers.Count;
+                endOfRound = _currentIndex == 0;
+                if (endOfRound)
                 {
-                    await GmTurnRequired.Invoke();
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[NovaGM] GM turn error: {ex.Message}");
-                }
-                finally
-                {
-                    _gmTurnInProgress = false;
+                    _roundNumber++;
+                    _acted.Clear();
+                    _passed.Clear();
+                    PersistTurnState();
                 }
             }
+            finally { _lock.Release(); }
+
+            if (endOfRound)
+                await RunGmTurnAsync(ct);
 
             BeginCurrentPlayerTurn();
         }
 
+        // Runs the GM turn outside the lock to allow concurrent RemovePlayer/Incapacitate
+        // calls and to prevent PassCurrentPlayerAsync from deadlocking on re-entry.
+        private async Task RunGmTurnAsync(CancellationToken ct)
+        {
+            // Check-and-set under the lock so only one GM turn runs at a time.
+            await _lock.WaitAsync(ct);
+            bool shouldRun = !_gmTurnInProgress && GmTurnRequired is not null;
+            if (shouldRun) _gmTurnInProgress = true;
+            _lock.Release();
+
+            if (!shouldRun) return;
+
+            try
+            {
+                await GmTurnRequired!.Invoke();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[NovaGM] GM turn error: {ex.Message}");
+            }
+            finally
+            {
+                // Use synchronous Wait here so cancellation cannot prevent cleanup.
+                _lock.Wait();
+                _gmTurnInProgress = false;
+                _lock.Release();
+            }
+        }
+
+        // Reads the state snapshot under the lock, then acts on it without holding it.
+        // This prevents BeginCurrentPlayerTurn from deadlocking when it kicks off
+        // PassCurrentPlayerAsync as fire-and-forget for incapacitated players.
         private void BeginCurrentPlayerTurn()
         {
-            if (_activePlayers.Count == 0) return;
-            var current = CurrentPlayerId;
-            if (current is null) return;
+            string? current = null;
+            bool isIncapacitated = false;
 
-            // Auto-pass incapacitated players — fire-and-forget, but log any failure
-            if (_incapacitated.Contains(current))
+            _lock.Wait();
+            try
+            {
+                if (_activePlayers.Count == 0) return;
+                current = CurrentPlayerId;
+                if (current is null) return;
+                isIncapacitated = _incapacitated.Contains(current);
+            }
+            finally { _lock.Release(); }
+
+            if (isIncapacitated)
             {
                 _ = PassCurrentPlayerAsync().ContinueWith(
                     t => Console.Error.WriteLine($"[TurnEngine] Auto-pass failed: {t.Exception?.GetBaseException().Message}"),
@@ -240,21 +312,18 @@ namespace NovaGM.Services.Multiplayer
                 return;
             }
 
-            TurnStarted?.Invoke(current);
+            TurnStarted?.Invoke(current!);
         }
 
         private void PersistTurnState()
         {
             var ts = _store.Load().TurnState;
-            ts.ActivePlayerIds.Clear();
-            ts.ActivePlayerIds.AddRange(_activePlayers);
-            ts.ActedThisRound.Clear();
-            foreach (var p in _acted)  ts.ActedThisRound.Add(p);
-            ts.PassedThisRound.Clear();
-            foreach (var p in _passed) ts.PassedThisRound.Add(p);
-            ts.Incapacitated.Clear();
-            foreach (var p in _incapacitated) ts.Incapacitated.Add(p);
+            ts.ActivePlayerIds.Clear();  ts.ActivePlayerIds.AddRange(_activePlayers);
+            ts.ActedThisRound.Clear();   ts.ActedThisRound.UnionWith(_acted);
+            ts.PassedThisRound.Clear();  ts.PassedThisRound.UnionWith(_passed);
+            ts.Incapacitated.Clear();    ts.Incapacitated.UnionWith(_incapacitated);
             ts.RoundNumber = _roundNumber;
+            _store.Save();
         }
 
         private static string Normalize(string id) => (id ?? "").Trim().ToUpperInvariant();

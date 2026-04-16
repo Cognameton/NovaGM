@@ -29,7 +29,12 @@ namespace NovaGM.ViewModels
 
         public ObservableCollection<Message> Messages { get; } = new();
         public ObservableCollection<string> ConnectedPlayers { get; } = new();
-        public string Input { get; set; } = string.Empty;
+        private string _input = string.Empty;
+        public string Input
+        {
+            get => _input;
+            set { if (_input != value) { _input = value; OnPropertyChanged(); } }
+        }
         public ICommand SendCommand { get; }
 
         public CharacterSheetViewModel CharacterSheet { get; }
@@ -75,7 +80,12 @@ namespace NovaGM.ViewModels
         public ICommand CreateHubCharacterCommand { get; }
 
         public ObservableCollection<string> JournalEntries { get; } = new();
-        public string NewJournalText { get; set; } = "";
+        private string _newJournalText = "";
+        public string NewJournalText
+        {
+            get => _newJournalText;
+            set { if (_newJournalText != value) { _newJournalText = value; OnPropertyChanged(); } }
+        }
         public ICommand AddJournalEntryCommand { get; }
 
         public ObservableCollection<CompendiumEntry> Compendium { get; } = new();
@@ -277,14 +287,8 @@ namespace NovaGM.ViewModels
                 try
                 {
                     var saveWindow = new SaveMissionWindow(_agent.StateStore, Messages);
-                    var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
-                    // ShowDialog requires an owner, so we'll provide a fallback
-                    if (ownerWindow == null)
-                    {
-                        // Create a temporary invisible window as owner if needed
-                        ownerWindow = new Window { Width = 1, Height = 1, WindowStartupLocation = WindowStartupLocation.CenterScreen };
-                        ownerWindow.Show();
-                    }
+                    var ownerWindow = GetMainWindow()
+                        ?? new Window { Width = 1, Height = 1, WindowStartupLocation = WindowStartupLocation.CenterScreen };
                     var result = await saveWindow.ShowDialog<string?>(ownerWindow);
                     
                     if (!string.IsNullOrEmpty(result))
@@ -309,16 +313,7 @@ namespace NovaGM.ViewModels
             {
                 try
                 {
-                    var playerWindow = new PlayerManagementWindow();
-                    var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
-                    if (ownerWindow != null)
-                    {
-                        playerWindow.Show(ownerWindow);
-                    }
-                    else
-                    {
-                        playerWindow.Show();
-                    }
+                    ShowToolWindow(() => new PlayerManagementWindow());
                 }
                 catch (Exception ex)
                 {
@@ -332,14 +327,8 @@ namespace NovaGM.ViewModels
                 try
                 {
                     var loadWindow = new LoadScenarioWindow();
-                    var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
-                    // ShowDialog requires an owner, so we'll provide a fallback
-                    if (ownerWindow == null)
-                    {
-                        // Create a temporary invisible window as owner if needed
-                        ownerWindow = new Window { Width = 1, Height = 1, WindowStartupLocation = WindowStartupLocation.CenterScreen };
-                        ownerWindow.Show();
-                    }
+                    var ownerWindow = GetMainWindow()
+                        ?? new Window { Width = 1, Height = 1, WindowStartupLocation = WindowStartupLocation.CenterScreen };
                     var result = await loadWindow.ShowDialog<Mission?>(ownerWindow);
                     
                     if (result != null)
@@ -364,14 +353,8 @@ namespace NovaGM.ViewModels
                     }
 
                     var genreWindow = new GenreSelectionWindow();
-                    var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
-                    // ShowDialog requires an owner, so we'll provide a fallback
-                    if (ownerWindow == null)
-                    {
-                        // Create a temporary invisible window as owner if needed
-                        ownerWindow = new Window { Width = 1, Height = 1, WindowStartupLocation = WindowStartupLocation.CenterScreen };
-                        ownerWindow.Show();
-                    }
+                    var ownerWindow = GetMainWindow()
+                        ?? new Window { Width = 1, Height = 1, WindowStartupLocation = WindowStartupLocation.CenterScreen };
                     var result = await genreWindow.ShowDialog<GameGenre?>(ownerWindow);
                     
                     if (result.HasValue)
@@ -410,8 +393,11 @@ namespace NovaGM.ViewModels
                             {
                                 Messages.Add(new Message("System", $"'{inp.Player}' has joined the session."));
 
-                                // Register with TurnEngine now that the player is fully joined
-                                if (!_turnEngine.ActivePlayers.Contains(inp.Player))
+                                // Register with TurnEngine now that the player is fully joined.
+                                // Use the locked IsPlayerActive accessor — AddPlayer is idempotent
+                                // but calling it without a prior check would log a spurious full-session
+                                // message for already-registered players.
+                                if (!_turnEngine.IsPlayerActive(inp.Player))
                                 {
                                     if (!_turnEngine.AddPlayer(inp.Player))
                                         Messages.Add(new Message("System", $"Session is full ({TurnEngine.MaxActivePlayers} players). '{inp.Player}' may spectate."));
@@ -436,17 +422,18 @@ namespace NovaGM.ViewModels
 
         private static void ShowToolWindow(Func<Window> factory)
         {
-            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life
-                && life.MainWindow is { } owner)
-            {
-                var w = factory();
-                w.Show(owner);
-            }
+            var owner = GetMainWindow();
+            if (owner is not null)
+                factory().Show(owner);
             else
-            {
                 factory().Show();
-            }
         }
+
+        /// Returns the app's main window, or null if running headless.
+        private static Window? GetMainWindow()
+            => Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life
+                ? life.MainWindow
+                : null;
 
         private void WireTurnEngine()
         {
@@ -468,61 +455,47 @@ namespace NovaGM.ViewModels
             // GM-initiative turn: world advances after a full round
             _turnEngine.GmTurnRequired += async () =>
             {
-                var gm = new Message("GM", "");
-                Dispatcher.UIThread.Post(() =>
-                {
-                    CurrentTurnPlayer = "GM";
-                    Messages.Add(gm);
-                });
-                broadcaster.Publish("GM: ");
-
-                var final = await _agent.RunGmTurnAsync(
-                    _sessionCts.Token,
-                    onNarratorToken: chunk =>
-                    {
-                        Dispatcher.UIThread.Post(() => gm.Append(chunk));
-                        broadcaster.Publish(chunk);
-                    });
-
-                Dispatcher.UIThread.Post(() =>
-                {
-                    if (!string.IsNullOrEmpty(final) && !gm.Content.Equals(final))
-                        gm.Content = final;
-                    broadcaster.Publish("\n");
-                    if (!string.IsNullOrWhiteSpace(final))
-                        MessageHistoryService.AddMessage(new Models.Message("GM", final));
-                });
+                Dispatcher.UIThread.Post(() => CurrentTurnPlayer = "GM");
+                await RunGmNarrativeAsync(broadcaster);
             };
 
             // Interrupt event: GM injects an unexpected beat (ambush, distress call, etc.)
             _turnEngine.InterruptEventFired += async reason =>
-            {
-                var gm = new Message("GM", "");
-                Dispatcher.UIThread.Post(() => Messages.Add(gm));
-                broadcaster.Publish("GM: ");
+                await RunGmNarrativeAsync(broadcaster, interruptReason: reason);
+        }
 
-                var final = await _agent.RunGmTurnAsync(
-                    _sessionCts.Token,
-                    onNarratorToken: chunk =>
-                    {
-                        Dispatcher.UIThread.Post(() => gm.Append(chunk));
-                        broadcaster.Publish(chunk);
-                    },
-                    interruptReason: reason);
+        /// Runs a GM-authored narrative turn (world-advance or interrupt) and streams it to the UI and LAN.
+        private async Task RunGmNarrativeAsync(LocalBroadcaster broadcaster, string? interruptReason = null)
+        {
+            var gm = new Message("GM", "");
+            Dispatcher.UIThread.Post(() => Messages.Add(gm));
+            broadcaster.Publish("GM: ");
 
-                Dispatcher.UIThread.Post(() =>
+            var final = await _agent.RunGmTurnAsync(
+                _sessionCts.Token,
+                onNarratorToken: chunk =>
                 {
-                    if (!string.IsNullOrEmpty(final) && !gm.Content.Equals(final))
-                        gm.Content = final;
-                    broadcaster.Publish("\n");
-                    if (!string.IsNullOrWhiteSpace(final))
-                        MessageHistoryService.AddMessage(new Models.Message("GM", final));
-                });
-            };
+                    Dispatcher.UIThread.Post(() => gm.Append(chunk));
+                    broadcaster.Publish(chunk);
+                },
+                interruptReason: interruptReason);
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (!string.IsNullOrEmpty(final) && !gm.Content.Equals(final))
+                    gm.Content = final;
+                broadcaster.Publish("\n");
+                if (!string.IsNullOrWhiteSpace(final))
+                    MessageHistoryService.AddMessage(new Models.Message("GM", final));
+            });
         }
 
         private async Task HandleTurnAsync(string playerName, string text, LocalBroadcaster broadcaster)
         {
+            // Empty text is a silent join notification enqueued by the /character POST handler.
+            // The Dispatcher.Post in the input loop already updated the UI; nothing more to do.
+            if (string.IsNullOrWhiteSpace(text)) return;
+
             await _turnLock.WaitAsync();
             try
             {
@@ -547,7 +520,7 @@ namespace NovaGM.ViewModels
                         return; // Character not saved yet — ignore silently
 
                     // Register with TurnEngine if not already (handles late joiners)
-                    if (!_turnEngine.ActivePlayers.Any(p => p.Equals(playerName, StringComparison.OrdinalIgnoreCase)))
+                    if (!_turnEngine.IsPlayerActive(playerName))
                     {
                         if (!_turnEngine.AddPlayer(playerName))
                         {
@@ -560,7 +533,7 @@ namespace NovaGM.ViewModels
                 }
 
                 // In multi-player, enforce whose turn it is
-                var isSolo = _turnEngine.ActivePlayers.Count <= 1;
+                var isSolo = _turnEngine.ActivePlayerCount <= 1;
                 if (!isSolo && !isHubPlayer)
                 {
                     var current = _turnEngine.CurrentPlayerId;
@@ -659,9 +632,8 @@ namespace NovaGM.ViewModels
             CharacterDraft? draft = null;
 
             var creator = new CharacterCreatorWindow();
-            var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
             Window? tempOwner = null;
-
+            var ownerWindow = GetMainWindow();
             if (ownerWindow is null)
             {
                 tempOwner = new Window { Width = 1, Height = 1, Opacity = 0, ShowInTaskbar = false, WindowStartupLocation = WindowStartupLocation.CenterScreen };
@@ -852,6 +824,9 @@ namespace NovaGM.ViewModels
                     state.Facts.Clear();
                     foreach (var fact in mission.InitialState.Facts)
                         state.Facts.Add(fact);
+
+                    // Persist the loaded mission state so it survives a restart.
+                    _agent.StateStore.Save();
                 }
                 
                 // Add opening message
@@ -940,7 +915,7 @@ namespace NovaGM.ViewModels
             {
                 // Step 1: Exit confirmation dialog
                 var exitDialog = new ExitConfirmationDialog();
-                var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
+                var ownerWindow = GetMainWindow();
                 
                 if (ownerWindow != null)
                     await exitDialog.ShowDialog(ownerWindow);
@@ -1005,7 +980,7 @@ namespace NovaGM.ViewModels
         private async Task PerformSafeShutdownAsync()
         {
             var countdownWindow = new ShutdownCountdownWindow();
-            var ownerWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life && life.MainWindow is { } mw ? mw : null;
+            var ownerWindow = GetMainWindow();
             
             // Start the shutdown process in the background
             _ = Task.Run(async () =>

@@ -48,5 +48,11 @@ namespace NovaGM.Services.State
 
         /// <summary>Clears the pending transition (called after player confirms or cancels).</summary>
         void ClearPendingTransition();
+
+        /// <summary>Flushes the current in-memory state to disk immediately.</summary>
+        void Save();
+
+        /// <summary>The suggestions offered at the end of the last turn, in order. Empty when no turn has run yet.</summary>
+        string[] LastSuggestions { get; set; }
     }
 }

@@ -14,6 +14,9 @@ namespace NovaGM.Services.Agent
     /// Dispatches tool calls made by the ControllerAgent during its ReAct loop.
     public static class ToolDispatcher
     {
+        private const string TierAmbient   = "ambient";
+        private const string TierNarrative = "narrative";
+
         private static readonly JsonSerializerOptions _json = new()
         {
             PropertyNameCaseInsensitive = true
@@ -50,7 +53,7 @@ namespace NovaGM.Services.Agent
                     "add_scene_npc"    => AddSceneNpc(args, state),
                     "add_scene_item"   => AddSceneItem(args, state),
                     "scene_transition" => SceneTransition(args, state),
-                    _ => $"Unknown tool '{toolName}'. Valid tools: roll_dice, get_player, get_npc, get_flags, query_memory, set_flag, update_npc, get_scene, give_item, add_scene_npc, add_scene_item, scene_transition"
+                    _ => $"Unknown tool '{toolName}'. Valid tools: roll_dice, get_player, get_npc, get_flags, get_scene, query_memory, set_flag, update_npc, give_item, add_scene_npc, add_scene_item, scene_transition"
                 };
             }
             catch (Exception ex)
@@ -118,12 +121,12 @@ namespace NovaGM.Services.Agent
 
         private static async Task<string> QueryMemoryAsync(Dictionary<string, JsonElement> args, IStateStore state, Retriever? retriever)
         {
-            var q = GetString(args, "q") ?? "";
+            var searchQuery = GetString(args, "q") ?? "";
             if (retriever != null)
             {
                 try
                 {
-                    var results = await retriever.QueryTopKAsync(q, 5).ConfigureAwait(false);
+                    var results = await retriever.QueryTopKAsync(searchQuery, 5).ConfigureAwait(false);
                     if (results.Count > 0)
                         return string.Join("; ", results);
                 }
@@ -222,7 +225,7 @@ namespace NovaGM.Services.Agent
             var id          = GetString(args, "id")          ?? "";
             var name        = GetString(args, "name")        ?? "";
             var description = GetString(args, "description") ?? "";
-            var tier        = GetString(args, "tier")        ?? "ambient";
+            var tier        = GetString(args, "tier")        ?? TierAmbient;
             var disposition = GetString(args, "disposition") ?? "neutral";
             var motivation  = GetString(args, "motivation");
             var role        = GetString(args, "role");
@@ -244,7 +247,7 @@ namespace NovaGM.Services.Agent
                 Disposition = disposition,
                 Motivation  = motivation,
                 Role        = role,
-                ArcState    = tier == "narrative" ? "introduced" : null
+                ArcState    = tier == TierNarrative ? "introduced" : null
             });
 
             // Mirror into legacy Npcs dict for backward compat
@@ -260,7 +263,7 @@ namespace NovaGM.Services.Agent
             var id          = GetString(args, "id")          ?? "";
             var name        = GetString(args, "name")        ?? "";
             var description = GetString(args, "description") ?? "";
-            var tier        = GetString(args, "tier")        ?? "ambient";
+            var tier        = GetString(args, "tier")        ?? TierAmbient;
             var collectible = true;
 
             if (args.TryGetValue("collectible", out var cVal) && cVal.ValueKind == JsonValueKind.False)
@@ -282,7 +285,7 @@ namespace NovaGM.Services.Agent
                 Collectible = collectible
             };
 
-            if (tier == "narrative")
+            if (tier == TierNarrative)
             {
                 item.GrantsAction = GetString(args, "grants_action");
                 item.Unlocks      = GetString(args, "unlocks");

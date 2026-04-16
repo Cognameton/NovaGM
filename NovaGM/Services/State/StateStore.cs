@@ -19,6 +19,8 @@ namespace NovaGM.Services.State
         private string? _pendingTransition;
         public string? PendingTransition => _pendingTransition;
 
+        public string[] LastSuggestions { get; set; } = Array.Empty<string>();
+
         private static string AppDataDir =>
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NovaGM");
 
@@ -277,7 +279,7 @@ namespace NovaGM.Services.State
             catch { return null; }
         }
 
-        private void Save()
+        public void Save()
         {
             try
             {

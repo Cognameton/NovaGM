@@ -45,6 +45,18 @@ namespace NovaGM.Services.Agent
 
         public void SetRetriever(Retriever retriever) => _retriever = retriever;
 
+        // Keywords that must not appear in user-controlled fields to prevent prompt injection.
+        private static readonly string[] InjectionKeywords = { "FINAL_ANSWER:", "ACTION:", "OBSERVATION:" };
+
+        /// Strip prompt-injection keywords from a player-supplied string.
+        private static string SanitizeUserInput(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return input;
+            foreach (var kw in InjectionKeywords)
+                input = input.Replace(kw, string.Empty, StringComparison.OrdinalIgnoreCase);
+            return input;
+        }
+
         /// Run a full agent turn and return a Beat, or null if the model failed.
         public async Task<Beat?> RunAsync(
             string playerText,
@@ -55,7 +67,12 @@ namespace NovaGM.Services.Agent
             CancellationToken ct,
             string? actingPlayerId = null)
         {
+            // Sanitize only the player-supplied string — facts and compact are server-generated.
+            playerText = SanitizeUserInput(playerText);
+
             var prompt = BuildInitialPrompt(playerText, facts, compact, genreContext, schema);
+            // Record where the system portion ends so we only search model output for markers.
+            int modelOutputStart = prompt.Length;
             Beat? result = null;
 
             for (int i = 0; i < MaxIterations && !ct.IsCancellationRequested; i++)
@@ -65,7 +82,7 @@ namespace NovaGM.Services.Agent
 
                 prompt.Append(response);
 
-                // FINAL_ANSWER → done
+                // FINAL_ANSWER → done (search only the model's own response slice)
                 var beat = TryExtractFinalAnswer(response);
                 if (beat != null)
                 {
@@ -88,20 +105,34 @@ namespace NovaGM.Services.Agent
                 prompt.AppendLine("Assistant:");
             }
 
-            // If we ran out of iterations, try one last forced extraction from the
-            // accumulated prompt — the model may have produced partial JSON.
+            // If we ran out of iterations, try one last forced extraction — restrict
+            // the search to only the model output portion (after modelOutputStart) so
+            // that player-injected text in the prompt prefix cannot be matched.
             if (result == null)
-                result = TryExtractFinalAnswer(prompt.ToString());
+            {
+                var modelOutput = prompt.Length > modelOutputStart
+                    ? prompt.ToString(modelOutputStart, prompt.Length - modelOutputStart)
+                    : string.Empty;
+                result = TryExtractFinalAnswer(modelOutput);
+            }
 
-            // Persist a one-line summary into the rolling context
+            // Persist a summary + suggestions into the rolling context so the next turn
+            // can understand references like "I choose option 2".
             if (result != null)
             {
                 var title   = result.Title   ?? "";
                 var summary = result.Summary ?? "";
                 var label   = string.IsNullOrWhiteSpace(title) ? summary : title;
                 var snippet = playerText.Length > 50 ? playerText[..50] + "…" : playerText;
-                var entry   = $"[Turn] \"{snippet}\" → {(label.Length > 80 ? label[..80] + "…" : label)}";
-                _rollingContext.Add(entry);
+                var entry   = new System.Text.StringBuilder();
+                entry.Append($"[Turn] \"{snippet}\" → {(label.Length > 80 ? label[..80] + "…" : label)}");
+                if (result.Suggestions is { Length: > 0 })
+                {
+                    entry.Append(" | options offered:");
+                    for (int s = 0; s < result.Suggestions.Length; s++)
+                        entry.Append($" {s + 1}) {result.Suggestions[s]}");
+                }
+                _rollingContext.Add(entry.ToString());
                 if (_rollingContext.Count > MaxContextEntries)
                     _rollingContext.RemoveAt(0);
             }

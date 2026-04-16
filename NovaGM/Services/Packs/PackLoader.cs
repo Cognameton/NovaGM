@@ -2,12 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace NovaGM.Services.Packs
 {
     /// Loads the active pack’s data. Seeds a minimal "classic" pack if none exist.
     public static class PackLoader
     {
+        // Pack IDs must contain only letters, digits, underscore, or hyphen.
+        private static readonly Regex _safePackId =
+            new Regex(@"^[a-zA-Z0-9_\-]+$", RegexOptions.Compiled);
+
         private static readonly object _lock = new();
         private static PackData _data = new();
         public static PackData Data { get { lock (_lock) return _data; } }
@@ -29,13 +34,26 @@ namespace NovaGM.Services.Packs
 
                 // Active pack id (via PackManager/Config). Fallback to "classic".
                 var activeId = PackManager.GetActiveId() ?? "classic";
-                var packDir  = Path.Combine(packsDir, activeId, "data");
+
+                // Validate pack ID to prevent path traversal via config.
+                if (!_safePackId.IsMatch(activeId))
+                    activeId = "classic";
+
+                var expectedBase = Path.GetFullPath(packsDir) + Path.DirectorySeparatorChar;
+                var packDir = Path.GetFullPath(Path.Combine(packsDir, activeId, "data"));
+
+                // Verify the resolved path is still inside the packs directory.
+                if (!packDir.StartsWith(expectedBase, StringComparison.Ordinal))
+                {
+                    activeId = "classic";
+                    packDir  = Path.GetFullPath(Path.Combine(packsDir, activeId, "data"));
+                }
 
                 if (!Directory.Exists(packDir))
                 {
                     // seed "classic" if missing
                     SeedClassicPack(Path.Combine(packsDir, "classic"));
-                    packDir = Path.Combine(packsDir, "classic", "data");
+                    packDir = Path.GetFullPath(Path.Combine(packsDir, "classic", "data"));
                 }
 
                 _data = LoadFromFolder(packDir);

@@ -54,18 +54,13 @@ namespace NovaGM.Services
             }
         };
 
-        private static string? FindFirstModelPath()
+        /// Find the first .gguf file whose name starts with <paramref name="prefix"/>.
+        /// If prefix is null or empty, returns any .gguf file in the directory.
+        private static string? FindModelPath(string? prefix = null)
         {
             if (!Directory.Exists(LlmDir)) return null;
-            return Directory.EnumerateFiles(LlmDir, "*.gguf", SearchOption.TopDirectoryOnly)
-                            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
-                            .FirstOrDefault();
-        }
-
-        private static string? FindModelByPrefix(string prefix)
-        {
-            if (!Directory.Exists(LlmDir)) return null;
-            return Directory.EnumerateFiles(LlmDir, $"{prefix}*.gguf", SearchOption.TopDirectoryOnly)
+            var pattern = string.IsNullOrEmpty(prefix) ? "*.gguf" : $"{prefix}*.gguf";
+            return Directory.EnumerateFiles(LlmDir, pattern, SearchOption.TopDirectoryOnly)
                             .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
                             .FirstOrDefault();
         }
@@ -82,14 +77,14 @@ namespace NovaGM.Services
             {
                 foreach (var candidate in candidates)
                 {
-                    var found = FindModelByPrefix(candidate);
+                    var found = FindModelPath(candidate);
                     if (!string.IsNullOrWhiteSpace(found))
                         return found;
                 }
             }
 
             // 3) Fall back to legacy prefix naming (controller.*, narrator.*, memory.*) or first model found.
-            return FindModelByPrefix(fallbackPrefix) ?? FindFirstModelPath();
+            return FindModelPath(fallbackPrefix) ?? FindModelPath();
         }
 
         private readonly JsonSerializerOptions _json = new()
@@ -109,14 +104,34 @@ namespace NovaGM.Services
         {
             await EnsureLoadedAsync();
             var genreContext = BuildGenreContext();
+
+            // Resolve numbered option references ("1", "option 2", "I choose 3") into
+            // their full text so the controller always receives an unambiguous action.
+            playerText = ResolveOptionReference(playerText, _state.LastSuggestions);
+
             var (facts, compact) = await BuildContextAsync(playerText, outerCt);
 
             // PLAN → Beat
             var beat = await RunControllerAsync(
                 playerText, facts, compact, genreContext, outerCt, actingPlayerId);
 
+            // Graceful fallback: controller failed but story must continue.
+            // Run the narrator with a minimal scaffold beat so the player always gets a response.
             if (beat is null)
-                return "The scene hesitates, waiting for clarity. 1) Look around 2) Call out 3) Wait.";
+            {
+                Console.WriteLine("[NovaGM] Controller returned null — running narrator-only fallback.");
+                beat = new Beat
+                {
+                    Title         = "The story continues",
+                    Summary       = playerText,
+                    Mood          = "mysterious",
+                    Stakes        = "unknown",
+                    NarrativeNote = $"The player said: {playerText}. Acknowledge their action and keep the scene moving.",
+                    Suggestions   = _state.LastSuggestions.Length > 0
+                                        ? _state.LastSuggestions
+                                        : new[] { "Look around", "Call out", "Wait and listen" }
+                };
+            }
 
             // Apply state changes (item pickup, flags, NPC deltas, scene transitions)
             _state.ApplyChanges(
@@ -258,6 +273,10 @@ namespace NovaGM.Services
         {
             var normalizedSuggestions = NormalizeSuggestions(beat.Suggestions);
 
+            // Persist suggestions so the next turn can resolve "option 1" references.
+            if (normalizedSuggestions.Length > 0)
+                _state.LastSuggestions = normalizedSuggestions;
+
             // NARRATE — with narrative signals from the Beat
             using var narrCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
             narrCts.CancelAfter(TimeSpan.FromSeconds(30));
@@ -330,6 +349,33 @@ namespace NovaGM.Services
             if (delta?.Hooks?.Count > 0) _state.AddHooks(delta.Hooks);
 
             return finalProse;
+        }
+
+        /// Converts "1", "option 2", "I choose 3", "choice 2" etc. into the full suggestion text.
+        /// Returns the original text unchanged if it doesn't match a numbered option pattern.
+        private static string ResolveOptionReference(string playerText, string[] lastSuggestions)
+        {
+            if (lastSuggestions.Length == 0 || string.IsNullOrWhiteSpace(playerText))
+                return playerText;
+
+            var trimmed = playerText.Trim();
+
+            // Patterns: "1", "option 1", "choice 1", "I choose 1", "I pick 2", "#3", "option 1."
+            var match = System.Text.RegularExpressions.Regex.Match(
+                trimmed,
+                @"^(?:i\s+(?:choose|pick|select|go\s+with)\s+)?(?:option|choice|#)?\s*(\d+)\.?$",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            if (!match.Success) return playerText;
+
+            if (int.TryParse(match.Groups[1].Value, out int n) && n >= 1 && n <= lastSuggestions.Length)
+            {
+                var resolved = lastSuggestions[n - 1];
+                Console.WriteLine($"[NovaGM] Resolved \"{trimmed}\" → \"{resolved}\"");
+                return resolved;
+            }
+
+            return playerText;
         }
 
         private static string AppendChoices(string narration, string choiceText)
@@ -447,22 +493,22 @@ namespace NovaGM.Services
             _controllerAgent = new ControllerAgent(_controller, _state, _retriever);
 
             Console.WriteLine($"[NovaGM] Models loaded:");
-            Console.WriteLine($"  Controller: {ctrlPath}");
-            Console.WriteLine($"  Memory    : {memPath}");
-            Console.WriteLine($"  Narrator  : {narrPath}");
+            Console.WriteLine($"  Controller: {Path.GetFileName(ctrlPath)}");
+            Console.WriteLine($"  Memory    : {Path.GetFileName(memPath)}");
+            Console.WriteLine($"  Narrator  : {Path.GetFileName(narrPath)}");
             Console.WriteLine($"[NovaGM] GPU layers request: {gpuLayers}");
         }
 
         private async Task<string> AskSafeAsync(
-            LlamaLocal m,
-            string sys,
-            string user,
+            LlamaLocal llm,
+            string systemPrompt,
+            string userPrompt,
             CancellationToken ct,
             bool expectJson,
             Action<string>? onToken = null,
             int maxTokens = 0)
         {
-            if (!m.IsLoaded)
+            if (!llm.IsLoaded)
             {
                 if (!expectJson)
                 {
@@ -509,7 +555,7 @@ namespace NovaGM.Services
 
             try
             {
-                raw = await m.AskAsync(sys, user, linked.Token, forwarder, maxTokens);
+                raw = await llm.AskAsync(systemPrompt, userPrompt, linked.Token, forwarder, maxTokens);
             }
             catch (OperationCanceledException) when (linked.IsCancellationRequested && !ct.IsCancellationRequested)
             {

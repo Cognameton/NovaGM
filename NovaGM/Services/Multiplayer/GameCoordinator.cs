@@ -133,8 +133,16 @@ namespace NovaGM.Services.Multiplayer
 
         private static string GenerateCode()
         {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
             var r = Random.Shared;
-            return $"{(char)('A' + r.Next(26))}{(char)('A' + r.Next(26))}{r.Next(0, 10)}{r.Next(0, 10)}";
+            return new string(new[] {
+                chars[r.Next(chars.Length)],
+                chars[r.Next(chars.Length)],
+                chars[r.Next(chars.Length)],
+                chars[r.Next(chars.Length)],
+                chars[r.Next(chars.Length)],
+                chars[r.Next(chars.Length)]
+            });
         }
 
         private static string NormalizeKey(string name) => (name ?? "").Trim().ToUpperInvariant();

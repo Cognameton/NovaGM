@@ -48,7 +48,21 @@ namespace NovaGM.Services
         public static string? ResolvePath(string? fileName)
         {
             if (string.IsNullOrWhiteSpace(fileName)) return null;
-            var p = Path.Combine(LlmDir, fileName);
+
+            // Reject any filename that contains directory separators or .. components.
+            if (fileName.Contains(Path.DirectorySeparatorChar) ||
+                fileName.Contains(Path.AltDirectorySeparatorChar) ||
+                fileName.Contains(".."))
+                return null;
+
+            var p = Path.GetFullPath(Path.Combine(LlmDir, fileName));
+
+            // Confirm the resolved path is still inside LlmDir.
+            var baseDir = LlmDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) +
+                          Path.DirectorySeparatorChar;
+            if (!p.StartsWith(baseDir, StringComparison.Ordinal))
+                return null;
+
             return File.Exists(p) ? p : null;
         }
     }
