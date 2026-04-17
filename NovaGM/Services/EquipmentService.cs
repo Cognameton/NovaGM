@@ -10,6 +10,111 @@ namespace NovaGM.Services
     /// </summary>
     public static class EquipmentService
     {
+        // ── Starter equipment ─────────────────────────────────────────────────
+
+        /// <summary>
+        /// Returns a genre- and class-appropriate starting loadout.
+        /// Covers the five most visible slots: MainHand, OffHand, Chest, Cloak, Feet.
+        /// Callers may override individual slots before saving.
+        /// </summary>
+        public static Dictionary<EquipmentSlot, Item> BuildStarterEquipment(string? classId, GameGenre genre)
+        {
+            var equipment = new Dictionary<EquipmentSlot, Item>();
+            var cls = (classId ?? string.Empty).ToLowerInvariant();
+
+            void Add(EquipmentSlot slot, string name)
+            {
+                if (!string.IsNullOrWhiteSpace(name))
+                    equipment[slot] = new Item { Slot = slot, Name = name };
+            }
+
+            switch (genre)
+            {
+                case GameGenre.Fantasy:
+                    if (cls.Contains("wizard") || cls.Contains("mage"))
+                    {
+                        Add(EquipmentSlot.MainHand, "Wizard's Staff");
+                        Add(EquipmentSlot.Cloak,    "Spellweave Cloak");
+                        Add(EquipmentSlot.Chest,    "Apprentice Robes");
+                    }
+                    else if (cls.Contains("cleric"))
+                    {
+                        Add(EquipmentSlot.MainHand, "Warhammer");
+                        Add(EquipmentSlot.OffHand,  "Polished Shield");
+                        Add(EquipmentSlot.Chest,    "Scale Mail");
+                    }
+                    else if (cls.Contains("rogue"))
+                    {
+                        Add(EquipmentSlot.MainHand, "Twin Daggers");
+                        Add(EquipmentSlot.Cloak,    "Shadow Cloak");
+                        Add(EquipmentSlot.Chest,    "Soft Leather Armor");
+                    }
+                    else
+                    {
+                        Add(EquipmentSlot.MainHand, "Longsword");
+                        Add(EquipmentSlot.OffHand,  "Wooden Shield");
+                        Add(EquipmentSlot.Chest,    "Chain Shirt");
+                    }
+                    Add(EquipmentSlot.Feet,  "Traveler's Boots");
+                    if (!equipment.ContainsKey(EquipmentSlot.Cloak))
+                        Add(EquipmentSlot.Cloak, "Weathered Cloak");
+                    break;
+
+                case GameGenre.SciFi:
+                    Add(EquipmentSlot.Head, "Tactical Visor");
+                    if (cls.Contains("engineer") || cls.Contains("hacker"))
+                    {
+                        Add(EquipmentSlot.MainHand, "Smart Toolkit");
+                        Add(EquipmentSlot.Chest,    "Utility Jumpsuit");
+                    }
+                    else if (cls.Contains("scientist"))
+                    {
+                        Add(EquipmentSlot.MainHand, "Research Scanner");
+                        Add(EquipmentSlot.Chest,    "Nano-Fabric Lab Coat");
+                    }
+                    else
+                    {
+                        Add(EquipmentSlot.MainHand, "Pulse Carbine");
+                        Add(EquipmentSlot.OffHand,  "Deployable Shield");
+                        Add(EquipmentSlot.Chest,    "Composite Armor Vest");
+                    }
+                    Add(EquipmentSlot.Feet, "Mag-Boots");
+                    break;
+
+                case GameGenre.Horror:
+                    Add(EquipmentSlot.MainHand, "Crowbar");
+                    Add(EquipmentSlot.OffHand,  "Flashlight");
+                    Add(EquipmentSlot.Chest,    "Weathered Jacket");
+                    Add(EquipmentSlot.Feet,     "Sturdy Boots");
+                    break;
+
+                default:
+                    Add(EquipmentSlot.MainHand, "Reliable Blade");
+                    Add(EquipmentSlot.OffHand,  "Sturdy Shield");
+                    Add(EquipmentSlot.Chest,    "Traveler's Vest");
+                    Add(EquipmentSlot.Feet,     "Trail Boots");
+                    break;
+            }
+
+            return equipment;
+        }
+
+        /// <summary>
+        /// Merges manual overrides on top of a starter loadout.
+        /// Any non-blank override replaces the auto-assigned starter for that slot.
+        /// </summary>
+        public static Dictionary<EquipmentSlot, Item> MergeOverrides(
+            Dictionary<EquipmentSlot, Item> starters,
+            Dictionary<EquipmentSlot, string> overrides)
+        {
+            var result = new Dictionary<EquipmentSlot, Item>(starters);
+            foreach (var (slot, name) in overrides)
+            {
+                if (string.IsNullOrWhiteSpace(name)) continue;
+                result[slot] = new Item { Slot = slot, Name = name.Trim() };
+            }
+            return result;
+        }
         /// <summary>
         /// Equip an item from inventory to an equipment slot
         /// </summary>

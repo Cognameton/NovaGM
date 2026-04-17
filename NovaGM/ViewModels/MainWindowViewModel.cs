@@ -736,99 +736,10 @@ namespace NovaGM.ViewModels
                     WIS = NormalizeStat(stats.WIS),
                     CHA = NormalizeStat(stats.CHA)
                 },
-                Equipment = BuildStarterEquipment(draft)
+                Equipment = EquipmentService.BuildStarterEquipment(draft.Class, GenreManager.Current.Genre)
             };
 
             return character;
-        }
-
-        private static Dictionary<EquipmentSlot, Item> BuildStarterEquipment(CharacterDraft draft)
-        {
-            var equipment = new Dictionary<EquipmentSlot, Item>();
-            var genre = GenreManager.Current.Genre;
-            var classId = (draft.Class ?? string.Empty).ToLowerInvariant();
-
-            void Add(EquipmentSlot slot, string name)
-            {
-                if (string.IsNullOrWhiteSpace(name)) return;
-                equipment[slot] = new Item { Slot = slot, Name = name };
-            }
-
-            void AddCommon(string boots = "", string hands = "", string belt = "")
-            {
-                if (!string.IsNullOrWhiteSpace(boots)) Add(EquipmentSlot.Feet, boots);
-                if (!string.IsNullOrWhiteSpace(hands)) Add(EquipmentSlot.Hands, hands);
-                if (!string.IsNullOrWhiteSpace(belt)) Add(EquipmentSlot.Belt, belt);
-            }
-
-            switch (genre)
-            {
-                case GameGenre.Fantasy:
-                    if (classId.Contains("wizard") || classId.Contains("mage"))
-                    {
-                        Add(EquipmentSlot.MainHand, "Wizard's Staff");
-                        Add(EquipmentSlot.Cloak, "Spellweave Cloak");
-                        Add(EquipmentSlot.Chest, "Apprentice Robes");
-                    }
-                    else if (classId.Contains("cleric"))
-                    {
-                        Add(EquipmentSlot.MainHand, "Warhammer");
-                        Add(EquipmentSlot.OffHand, "Polished Shield");
-                        Add(EquipmentSlot.Chest, "Scale Mail");
-                    }
-                    else if (classId.Contains("rogue"))
-                    {
-                        Add(EquipmentSlot.MainHand, "Twin Daggers");
-                        Add(EquipmentSlot.Cloak, "Shadow Cloak");
-                        Add(EquipmentSlot.Chest, "Soft Leather Armor");
-                    }
-                    else
-                    {
-                        Add(EquipmentSlot.MainHand, "Longsword");
-                        Add(EquipmentSlot.OffHand, "Wooden Shield");
-                        Add(EquipmentSlot.Chest, "Chain Shirt");
-                    }
-                    AddCommon("Traveler's Boots", "Leather Gloves", "Adventurer's Belt");
-                    break;
-
-                case GameGenre.SciFi:
-                    Add(EquipmentSlot.Head, "Tactical Visor");
-                    if (classId.Contains("engineer") || classId.Contains("hacker"))
-                    {
-                        Add(EquipmentSlot.MainHand, "Smart Toolkit");
-                        Add(EquipmentSlot.Chest, "Utility Jumpsuit");
-                        Add(EquipmentSlot.Hands, "Interface Gloves");
-                    }
-                    else if (classId.Contains("scientist"))
-                    {
-                        Add(EquipmentSlot.MainHand, "Research Scanner");
-                        Add(EquipmentSlot.Chest, "Nano-Fabric Lab Coat");
-                    }
-                    else
-                    {
-                        Add(EquipmentSlot.MainHand, "Pulse Carbine");
-                        Add(EquipmentSlot.Chest, "Composite Armor Vest");
-                        Add(EquipmentSlot.OffHand, "Deployable Shield");
-                    }
-                    AddCommon("Mag-Boots", equipment.TryGetValue(EquipmentSlot.Hands, out _) ? "" : "Carbon Gloves", "Utility Harness");
-                    break;
-
-                case GameGenre.Horror:
-                    Add(EquipmentSlot.MainHand, "Crowbar");
-                    Add(EquipmentSlot.OffHand, "Flashlight");
-                    Add(EquipmentSlot.Chest, "Weathered Jacket");
-                    AddCommon("Sturdy Boots", "Work Gloves", "Survival Satchel");
-                    break;
-
-                default:
-                    Add(EquipmentSlot.MainHand, "Reliable Blade");
-                    Add(EquipmentSlot.OffHand, "Sturdy Shield");
-                    Add(EquipmentSlot.Chest, "Traveler's Vest");
-                    AddCommon("Trail Boots", "Ropebound Gloves", "Utility Belt");
-                    break;
-            }
-
-            return equipment;
         }
 
         private static int NormalizeStat(int value) => value <= 0 ? 10 : value;

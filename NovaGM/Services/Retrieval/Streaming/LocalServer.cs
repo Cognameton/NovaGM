@@ -297,6 +297,16 @@ input:focus, textarea:focus { outline: none; border-color: var(--primary); }
       <label>WIS<input id='pc_wis' type='number' value='10'/></label>
       <label>CHA<input id='pc_cha' type='number' value='10'/></label>
     </div>
+    <div style='margin-top:10px;margin-bottom:4px;font-size:12px;color:var(--muted);font-weight:600;letter-spacing:0.4px;text-transform:uppercase;'>Starting Equipment <span style='font-weight:400;text-transform:none;'>(leave blank for auto)</span></div>
+    <div class='form-row'>
+      <label>Main Hand<input id='pc_mainhand' autocomplete='off' placeholder='Weapon or tool'/></label>
+      <label>Off Hand<input id='pc_offhand' autocomplete='off' placeholder='Shield or secondary'/></label>
+    </div>
+    <div class='form-row'>
+      <label>Chest<input id='pc_chest' autocomplete='off' placeholder='Armor or jacket'/></label>
+      <label>Cloak<input id='pc_cloak' autocomplete='off' placeholder='Cloak or coat'/></label>
+      <label>Feet<input id='pc_feet' autocomplete='off' placeholder='Boots or footwear'/></label>
+    </div>
     <div style='margin-top:10px;display:flex;gap:8px;'>
       <button id='save' class='btn'>Save Character</button>
     </div>
@@ -387,7 +397,9 @@ const editBtn     = document.getElementById('edit-char');
 const refreshBtn  = document.getElementById('refresh-char');
 
 const fieldMap = { Name:'pc_name', Race:'pc_race', Class:'pc_class', Level:'pc_level',
-                   STR:'pc_str', DEX:'pc_dex', CON:'pc_con', INT:'pc_int', WIS:'pc_wis', CHA:'pc_cha' };
+                   STR:'pc_str', DEX:'pc_dex', CON:'pc_con', INT:'pc_int', WIS:'pc_wis', CHA:'pc_cha',
+                   MainHand:'pc_mainhand', OffHand:'pc_offhand', Chest:'pc_chest', Cloak:'pc_cloak', Feet:'pc_feet' };
+const eqFields = ['MainHand','OffHand','Chest','Cloak','Feet'];
 let currentPc = null;
 
 function setStatus(text, color) {
@@ -395,14 +407,21 @@ function setStatus(text, color) {
   charStatus.style.color = color || '#EAECEE';
 }
 
+const statFields  = ['STR','DEX','CON','INT','WIS','CHA'];
+
 function fillForm(pc) {
   Object.entries(fieldMap).forEach(([key, id]) => {
     const input = document.getElementById(id);
     if (!input) return;
-    if (pc && pc[key] !== undefined && pc[key] !== null) input.value = pc[key];
-    else if (key === 'Level') input.value = 1;
-    else if (['STR','DEX','CON','INT','WIS','CHA'].includes(key)) input.value = 10;
-    else input.value = '';
+    if (pc && pc[key] !== undefined && pc[key] !== null) {
+      input.value = pc[key];
+    } else if (key === 'Level') {
+      input.value = 1;
+    } else if (statFields.includes(key)) {
+      input.value = 10;
+    } else {
+      input.value = '';
+    }
   });
 }
 
@@ -411,7 +430,7 @@ function collectForm() {
   Object.entries(fieldMap).forEach(([key, id]) => {
     const input = document.getElementById(id);
     if (!input) return;
-    if (['STR','DEX','CON','INT','WIS','CHA','Level'].includes(key)) {
+    if (statFields.includes(key) || key === 'Level') {
       const parsed = Number(input.value);
       result[key] = Number.isFinite(parsed) && parsed > 0 ? parsed : (key === 'Level' ? 1 : 10);
     } else {
@@ -583,6 +602,7 @@ async function generateCharacter(type) {
       body: JSON.stringify({ code: codeV, type }) });
     if (r.ok) {
       const g = await r.json();
+      const eq = g.starter_equipment || {};
       const mapped = { Name: g.name||'', Race: g.race||'', Class: g['class']||'', Level: 1,
                        STR: g.stats ? (g.stats.str ?? 10) : 10,
                        DEX: g.stats ? (g.stats.dex ?? 10) : 10,
@@ -590,6 +610,11 @@ async function generateCharacter(type) {
                        INT: g.stats ? (g.stats.int ?? 10) : 10,
                        WIS: g.stats ? (g.stats.wis ?? 10) : 10,
                        CHA: g.stats ? (g.stats.cha ?? 10) : 10,
+                       MainHand: eq.MainHand || '',
+                       OffHand:  eq.OffHand  || '',
+                       Chest:    eq.Chest    || '',
+                       Cloak:    eq.Cloak    || '',
+                       Feet:     eq.Feet     || '',
                        Inventory: currentPc ? currentPc.Inventory : null };
       showForm(mapped);
       setStatus('Template generated. Review and save.', '#A9B2BD');
@@ -787,6 +812,26 @@ loadCharacter();
                                        model.INT = pc.TryGetProperty("INT", out var intel) ? intel.GetInt32() : 0;
                                        model.WIS = pc.TryGetProperty("WIS", out var wis) ? wis.GetInt32() : 0;
                                        model.CHA = pc.TryGetProperty("CHA", out var cha) ? cha.GetInt32() : 0;
+
+                                       // Build starter equipment from class + current genre,
+                                       // then apply any manual overrides the player provided.
+                                       var starters = EquipmentService.BuildStarterEquipment(
+                                           model.Class, GenreManager.Current.Genre);
+
+                                       string EqField(string key) =>
+                                           pc.TryGetProperty(key, out var v)
+                                               ? (v.GetString() ?? "").Trim()[..Math.Min(64, (v.GetString() ?? "").Length)]
+                                               : "";
+
+                                       var overrides = new Dictionary<EquipmentSlot, string>
+                                       {
+                                           [EquipmentSlot.MainHand] = EqField("MainHand"),
+                                           [EquipmentSlot.OffHand]  = EqField("OffHand"),
+                                           [EquipmentSlot.Chest]    = EqField("Chest"),
+                                           [EquipmentSlot.Cloak]    = EqField("Cloak"),
+                                           [EquipmentSlot.Feet]     = EqField("Feet"),
+                                       };
+                                       model.Equipment = EquipmentService.MergeOverrides(starters, overrides);
 
                                        _coordinator.SetCharacter(code, name, model);
                                        // Wake the main window's input loop so it can update
@@ -1080,15 +1125,23 @@ loadCharacter();
                                        GeneratedCharacter character = type.ToLowerInvariant() switch
                                        {
                                            "fighter" => CharacterGenerator.GenerateForClass("fighter"),
-                                           "rogue" => CharacterGenerator.GenerateForClass("rogue"),
-                                           "mage" => CharacterGenerator.GenerateForClass("mage"),
+                                           "rogue"   => CharacterGenerator.GenerateForClass("rogue"),
+                                           "mage"    => CharacterGenerator.GenerateForClass("mage"),
                                            _ => CharacterGenerator.GenerateRandom()
                                        };
 
+                                       // Build starter equipment for this class/genre so the form
+                                       // can pre-fill the equipment fields when the player clicks
+                                       // a quick-generate button.
+                                       var starterEq = EquipmentService.BuildStarterEquipment(
+                                           character.Class, GenreManager.Current.Genre);
+                                       string EqName(EquipmentSlot s) =>
+                                           starterEq.TryGetValue(s, out var it) ? it.Name : "";
+
                                        var response = new
                                        {
-                                           name = character.Name,
-                                           race = character.Race,
+                                           name  = character.Name,
+                                           race  = character.Race,
                                            @class = character.Class,
                                            stats = new
                                            {
@@ -1098,6 +1151,14 @@ loadCharacter();
                                                @int = character.GetBaseStat("int"),
                                                wis = character.GetBaseStat("wis"),
                                                cha = character.GetBaseStat("cha")
+                                           },
+                                           starter_equipment = new
+                                           {
+                                               MainHand = EqName(EquipmentSlot.MainHand),
+                                               OffHand  = EqName(EquipmentSlot.OffHand),
+                                               Chest    = EqName(EquipmentSlot.Chest),
+                                               Cloak    = EqName(EquipmentSlot.Cloak),
+                                               Feet     = EqName(EquipmentSlot.Feet)
                                            }
                                        };
 
