@@ -370,9 +370,12 @@ namespace NovaGM.ViewModels
                     {
                         var genreName = GenreManager.GetGenreDisplayName(result.Value);
                         Messages.Add(new Message("GM", $"Genre set to {genreName}. The available races, classes, and equipment have been updated accordingly."));
-                        
+
                         // Update compendium with new genre content
                         UpdateCompendiumForGenre();
+
+                        // Notify connected player HUDs so they can rebuild their class buttons
+                        LocalBroadcaster.Instance.PublishEvent("genre_changed", "", genreName);
                     }
                 }
                 catch (Exception ex)

@@ -277,12 +277,10 @@ input:focus, textarea:focus { outline: none; border-color: var(--primary); }
 <section id='view-character' class='view active'>
   <div id='char-create' class='card'>
     <h3>Create your character</h3>
-    <div class='gen-row'>
+    <div id='gen-row' class='gen-row'>
       <button class='btn gen' onclick='generateCharacter("random")'>Random</button>
-      <button class='btn gen' onclick='generateCharacter("fighter")'>Fighter</button>
-      <button class='btn gen' onclick='generateCharacter("rogue")'>Rogue</button>
-      <button class='btn gen' onclick='generateCharacter("mage")'>Mage</button>
     </div>
+    <div id='genre-banner' style='display:none;margin-bottom:8px;padding:6px 10px;background:#1a2010;border:1px solid var(--accent-player);border-radius:6px;font-size:12px;color:var(--accent-player);'></div>
     <div class='form-row'>
       <label>Name<input id='pc_name' autocomplete='off'/></label>
       <label>Race<input id='pc_race' autocomplete='off'/></label>
@@ -623,6 +621,45 @@ async function generateCharacter(type) {
 }
 window.generateCharacter = generateCharacter;
 
+// Fetch genre info and rebuild the quick-generate button row
+async function loadGenreButtons(showBanner) {
+  try {
+    const r = await fetch('/genres?code=' + encodeURIComponent(codeV));
+    if (!r.ok) return;
+    const g = await r.json();
+    const row = document.getElementById('gen-row');
+    if (!row) return;
+    row.innerHTML = '';
+    // Always include Random
+    const rand = document.createElement('button');
+    rand.className = 'btn gen';
+    rand.textContent = 'Random';
+    rand.onclick = () => generateCharacter('random');
+    row.appendChild(rand);
+    // One button per class
+    (g.classes || []).forEach(cls => {
+      const btn = document.createElement('button');
+      btn.className = 'btn gen';
+      btn.textContent = cls.name;
+      btn.onclick = () => generateCharacter(cls.id);
+      row.appendChild(btn);
+    });
+    // Genre banner
+    const banner = document.getElementById('genre-banner');
+    if (banner) {
+      if (showBanner) {
+        banner.textContent = '\u26a0 Genre changed to ' + g.genre + '. Your saved character may no longer fit. Edit or recreate it.';
+        banner.style.display = 'block';
+      } else {
+        banner.style.display = 'none';
+      }
+    }
+  } catch (err) { console.error('Failed to load genres', err); }
+}
+
+// Load genre buttons on page load (no banner)
+loadGenreButtons(false);
+
 if (saveBtn)    saveBtn.addEventListener('click', e => { e.preventDefault(); saveCharacter(); });
 if (editBtn)    editBtn.addEventListener('click', () => showForm(currentPc || null));
 if (refreshBtn) refreshBtn.addEventListener('click', () => loadCharacter());
@@ -729,6 +766,13 @@ if (feed) {
     feed.innerHTML = '';
     currentGmBubble = null;
     addBubble('sys', '', 'A new game has begun.');
+  });
+
+  // Genre changed — rebuild class buttons and show banner
+  es.addEventListener('genre_changed', e => {
+    loadGenreButtons(true);
+    const d = JSON.parse(e.data);
+    addBubble('sys', '', '\u26a0 Genre changed to ' + (d.text || 'new genre') + '. You may want to update your character.');
   });
 
   // Legacy raw tokens (narrator streaming)
@@ -1122,13 +1166,12 @@ loadCharacter();
                                            ? typeProp.GetString() ?? "random"
                                            : "random";
 
-                                       GeneratedCharacter character = type.ToLowerInvariant() switch
-                                       {
-                                           "fighter" => CharacterGenerator.GenerateForClass("fighter"),
-                                           "rogue"   => CharacterGenerator.GenerateForClass("rogue"),
-                                           "mage"    => CharacterGenerator.GenerateForClass("mage"),
-                                           _ => CharacterGenerator.GenerateRandom()
-                                       };
+                                       var knownClasses = GenreManager.GetAvailableClasses();
+                                       GeneratedCharacter character = type.ToLowerInvariant() == "random"
+                                           ? CharacterGenerator.GenerateRandom()
+                                           : knownClasses.ContainsKey(type.ToLowerInvariant())
+                                               ? CharacterGenerator.GenerateForClass(type.ToLowerInvariant())
+                                               : CharacterGenerator.GenerateRandom();
 
                                        // Build starter equipment for this class/genre so the form
                                        // can pre-fill the equipment fields when the player clicks
@@ -1208,6 +1251,29 @@ loadCharacter();
                                        ctx.Response.StatusCode = 400;
                                        await ctx.Response.WriteAsync("bad request");
                                    }
+                               });
+
+                               // GET /genres?code=  — returns current genre + classes + races for HUD
+                               endpoints.MapGet("/genres", async ctx =>
+                               {
+                                   var genreCode = ctx.Request.Query["code"].ToString();
+                                   if (!string.Equals(genreCode, _coordinator.CurrentCode, StringComparison.OrdinalIgnoreCase))
+                                   {
+                                       ctx.Response.StatusCode = 403;
+                                       await ctx.Response.WriteAsync("bad room code");
+                                       return;
+                                   }
+                                   var genreName = GenreManager.GetGenreDisplayName(GenreManager.Current.Genre);
+                                   var classes = GenreManager.GetAvailableClasses()
+                                       .Select(kvp => new { id = kvp.Key, name = kvp.Value.Name })
+                                       .ToArray();
+                                   var races = GenreManager.GetAvailableRaces()
+                                       .Select(kvp => new { id = kvp.Key, name = kvp.Value.Name })
+                                       .ToArray();
+                                   ctx.Response.ContentType = "application/json";
+                                   await ctx.Response.WriteAsync(JsonSerializer.Serialize(
+                                       new { genre = genreName, classes, races },
+                                       new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
                                });
 
                                // GET /health
