@@ -36,14 +36,17 @@ namespace NovaGM.Services
         {
             ["controller"] = new[]
             {
+                "Configurable-Hermes-3",
+                "Hermes-3-Llama-3.1",
+                "hermes-3",
                 "phi3-3.8b-mini-4k-instruct",
-                "phi3.5",
-                "phi-2.7b"
+                "phi3.5"
             },
             ["narrator"] = new[]
             {
+                "Roleplay-Hermes-3",
+                "roleplay-hermes",
                 "dolphin-llama3-8b",
-                "dolphin-phi",
                 "mistral-7b"
             },
             ["memory"] = new[]
