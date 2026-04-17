@@ -85,6 +85,13 @@ namespace NovaGM.Models
 
         /// <summary>NPC group → reaction when player carries this item (e.g. "guards" → "deferential").</summary>
         public Dictionary<string, string>? NpcReaction { get; set; }
+
+        /// <summary>
+        /// Minimum character level required to collect this item (0 = no lock).
+        /// The give_item tool enforces this; the Controller receives a narrative-ready
+        /// refusal message when a player falls short.
+        /// </summary>
+        public int LevelRequired { get; set; } = 0;
     }
 
     // ── Scene ─────────────────────────────────────────────────────────────────

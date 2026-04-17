@@ -187,7 +187,9 @@ namespace NovaGM.Services.Agent
             {
                 sb.Append(" | Items: ");
                 sb.Append(string.Join(", ", available.Select(i =>
-                    $"{i.Name}[id={i.Id},tier={i.Tier},collectible={i.Collectible}]")));
+                    i.LevelRequired > 0
+                        ? $"{i.Name}[id={i.Id},tier={i.Tier},collectible={i.Collectible},lvl_req={i.LevelRequired}]"
+                        : $"{i.Name}[id={i.Id},tier={i.Tier},collectible={i.Collectible}]")));
             }
             else
             {
@@ -214,6 +216,15 @@ namespace NovaGM.Services.Agent
             if (item is null)      return $"Item '{itemId}' not found in scene.";
             if (!item.Collectible) return $"Item '{item.Name}' is not collectible.";
             if (item.IsCollected)  return $"Item '{item.Name}' has already been collected by {item.CollectedBy}.";
+
+            // Level lock check — return a narrative-ready refusal the Controller can use directly.
+            if (item.LevelRequired > 0)
+            {
+                var pc = GameCoordinator.Instance.GetPlayerCharacter(playerId);
+                int playerLevel = pc?.Level ?? 1;
+                if (playerLevel < item.LevelRequired)
+                    return $"Level lock: '{item.Name}' requires level {item.LevelRequired} — {playerId} is level {playerLevel} and not yet ready for this. The keeper of these wares makes that unmistakably clear.";
+            }
 
             state.ApplyChanges(null, null, null, itemsGive: new[] { itemId }, actingPlayerId: playerId);
             return $"'{item.Name}' added to {playerId}'s inventory.";
@@ -276,13 +287,18 @@ namespace NovaGM.Services.Agent
             if (scene.Items.Any(i => i.Id.Equals(id, StringComparison.OrdinalIgnoreCase)))
                 return $"Item '{id}' already in scene.";
 
+            var levelRequired = 0;
+            if (args.TryGetValue("level_required", out var lvlVal) && lvlVal.ValueKind == JsonValueKind.Number)
+                levelRequired = lvlVal.GetInt32();
+
             var item = new SceneItem
             {
-                Id          = id,
-                Name        = name,
-                Description = description,
-                Tier        = tier,
-                Collectible = collectible
+                Id            = id,
+                Name          = name,
+                Description   = description,
+                Tier          = tier,
+                Collectible   = collectible,
+                LevelRequired = levelRequired
             };
 
             if (tier == TierNarrative)
@@ -292,7 +308,8 @@ namespace NovaGM.Services.Agent
             }
 
             scene.Items.Add(item);
-            return $"Item '{name}' added to scene as {tier}.";
+            var lockNote = levelRequired > 0 ? $" (level {levelRequired} required)" : "";
+            return $"Item '{name}' added to scene as {tier}{lockNote}.";
         }
 
         /// <summary>Queues a scene transition — player confirmation required before it executes.</summary>

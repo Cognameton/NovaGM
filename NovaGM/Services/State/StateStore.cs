@@ -173,9 +173,13 @@ namespace NovaGM.Services.State
             var availableItems = _state.Scene.Items
                 .Where(i => !i.IsCollected)
                 .Take(6)
-                .Select(i => i.Tier == "narrative"
-                    ? $"{i.Name}[narrative,id={i.Id}]"
-                    : i.Name);
+                .Select(i =>
+                {
+                    var tags = new System.Collections.Generic.List<string>();
+                    if (i.Tier == "narrative") { tags.Add("narrative"); tags.Add($"id={i.Id}"); }
+                    if (i.LevelRequired > 0)   tags.Add($"lvl_req={i.LevelRequired}");
+                    return tags.Count > 0 ? $"{i.Name}[{string.Join(',', tags)}]" : i.Name;
+                });
             var itemList = string.Join(',', availableItems);
             if (!string.IsNullOrWhiteSpace(itemList))
                 parts.Append($"items=[{itemList}]; ");

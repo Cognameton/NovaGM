@@ -23,7 +23,7 @@ namespace NovaGM.Services.Agent
         private const int MaxIterations = 4;
 
         // Tokens the LLM may emit per reasoning step.
-        // Must be large enough for THOUGHT + full FINAL_ANSWER JSON (~600-800 tokens).
+        // Must be large enough for THOUGHT (1 sentence ~20 tokens) + full FINAL_ANSWER JSON (~600-800 tokens).
         private const int TokensPerStep = 1200;
 
         // How many past-turn summaries to keep in the rolling context.
@@ -114,10 +114,10 @@ namespace NovaGM.Services.Agent
                     continue;
                 }
 
-                // No structured output — nudge model toward a conclusion
+                // No structured output — push directly to FINAL_ANSWER, skip re-asking for THOUGHT
                 Console.WriteLine($"[Controller] Iteration {i + 1}: no ACTION or FINAL_ANSWER — nudging model");
-                prompt.AppendLine("\n[System: write THOUGHT then either ACTION <tool> {args} or FINAL_ANSWER {json}]");
-                prompt.AppendLine("Assistant:");
+                prompt.AppendLine("\n[System: output FINAL_ANSWER JSON now. No more THOUGHT.]");
+                prompt.AppendLine("FINAL_ANSWER:");
             }
 
             // If we ran out of iterations, try one last forced extraction — restrict
@@ -191,23 +191,22 @@ namespace NovaGM.Services.Agent
         }
 
         private static string BuildSystemPrompt(string genreContext, string schema) =>
-$@"You are the Narrative Controller for a tabletop RPG — the mind that shapes the world.
-Genre context: {genreContext}
+$@"You are a game state processor for a tabletop RPG. Your job is mechanical: read input, call tools if needed, output a Beat JSON directive for the narrator. You do NOT write prose or narrate — that is the narrator's exclusive role.
 
-Think like a game master and author. Every action has consequence, weight, and narrative potential.
+Genre: {genreContext}
 
-DEFAULT PATH — use when you have enough context:
-THOUGHT: <reason through consequence, consistency, narrative weight>
+DEFAULT — when you have enough context:
+THOUGHT: [one sentence: what state changes and why]
 FINAL_ANSWER: {{""Title"":""..."",""Summary"":""..."",""Mood"":""tense"",""Stakes"":""..."",""NarrativeNote"":""..."",""Suggestions"":[""..."",""..."",""...""]}}
 
-TOOL PATH — use ONLY when you need game state you don't have:
-THOUGHT: <reasoning>
-ACTION: get_scene {{}}
-[app replies: OBSERVATION: <scene contents>]
-THOUGHT: <reasoning>
+TOOL PATH — only when you need state you don't have:
+THOUGHT: [one sentence: what you need]
+ACTION: tool_name {{args}}
+OBSERVATION: <result>
+THOUGHT: [one sentence: conclusion]
 FINAL_ANSWER: {{...}}
 
-TOOLS (use sparingly — only what you need):
+TOOLS:
   roll_dice        {{""expr"":""2d6""}}
   get_player       {{""name"":""PlayerName""}}
   get_npc          {{""name"":""NpcName""}}
@@ -218,20 +217,29 @@ TOOLS (use sparingly — only what you need):
   update_npc       {{""name"":""NpcName"",""status"":""new status""}}
   give_item        {{""item_id"":""id"",""player_id"":""name""}}
   add_scene_npc    {{""id"":""key"",""name"":""Name"",""tier"":""ambient|narrative"",""disposition"":""neutral"",""motivation"":""optional""}}
-  add_scene_item   {{""id"":""key"",""name"":""Name"",""tier"":""ambient|narrative"",""collectible"":true,""description"":""...""}}
+  add_scene_item   {{""id"":""key"",""name"":""Name"",""tier"":""ambient|narrative"",""collectible"":true,""description"":""..."",""level_required"":0}}
   scene_transition {{""destination"":""location name""}}
 
-FINAL_ANSWER SCHEMA:
+BEAT OUTPUT — keep all fields brief and factual:
+- Title: 2-4 word label (e.g. ""Gate Confrontation"")
+- Summary: one factual sentence — what happened and what changed (no prose)
+- Mood: tense|mysterious|triumphant|dread|wonder|melancholic|urgent|grim|hopeful
+- Stakes: one short phrase (e.g. ""losing the informant"", ""being caught"")
+- NarrativeNote: one terse cue to the narrator (e.g. ""land on the wax seal; player should feel too late"")
+- Suggestions: 3 brief action phrases — not prose (e.g. ""bribe the guard"", ""take the side passage"")
+
+OPENING SEQUENCE — when rolling context is empty and no location is set:
+1. get_player for each connected player — record name, class, level.
+2. add_scene_npc — outfitter appropriate to genre. tier=""narrative"", disposition=""friendly"".
+3. add_scene_item x4-6 — level_required=1 for accessible items, level_required=player_level+3 for locked items. collectible=true for all.
+4. FINAL_ANSWER: Title=""Opening"", Mood=""hopeful"", Summary=""[players] arrive at [outfitter name]"", NarrativeNote=""name each player and class; describe outfitter and wares; call out locked items as visible but out of reach"", Suggestions=[""examine the wares"",""speak with [outfitter]"",""check your gear""]
+
+ITEM LOCKS: if give_item returns ""Level lock..."" — put the lock context in NarrativeNote.
+
+SCHEMA:
 {schema}
 
-REQUIREMENTS:
-- Mood: tense|mysterious|triumphant|dread|wonder|melancholic|urgent|grim|hopeful
-- Stakes: what is immediately at risk (life, secret, trust, time, opportunity)
-- NarrativeNote: specific private instruction to narrator (what detail to land on, what to feel)
-- Suggestions: 3+ distinct concrete actions hinting at different consequences
-- Do NOT name the genre — show it through tone, detail, lexicon
-- Plant a seed: name a person, object, or place that could return later
-- Max {MaxIterations} steps total; always reach FINAL_ANSWER within that limit";
+Max {MaxIterations} steps. Always produce FINAL_ANSWER.";
 
         // ── Parsing ───────────────────────────────────────────────────────────
 
