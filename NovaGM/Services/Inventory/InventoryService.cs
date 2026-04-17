@@ -34,6 +34,11 @@ namespace NovaGM.Services.Inventory
             _stateStore.SaveInventory(key, grid);
         }
 
+        public void RemoveInventory(string key)
+        {
+            _stateStore.RemoveInventory(key);
+        }
+
         public bool TryAddItem(string key, string itemId, int quantity = 1)
         {
             var grid = GetInventory(key);

@@ -78,6 +78,7 @@ namespace NovaGM.ViewModels
         public ICommand ShowRemotePlayerCommand { get; }
         public ICommand BackToRemotePlayerListCommand { get; }
         public ICommand CreateHubCharacterCommand { get; }
+        public ICommand DeleteHubCharacterCommand { get; }
 
         public ObservableCollection<string> JournalEntries { get; } = new();
         private string _newJournalText = "";
@@ -207,6 +208,11 @@ namespace NovaGM.ViewModels
             CreateHubCharacterCommand = new RelayCommand(async _ =>
             {
                 await CreateHubCharacterAsync();
+            });
+
+            DeleteHubCharacterCommand = new RelayCommand(async _ =>
+            {
+                await DeleteHubCharacterAsync();
             });
 
             // Journal add
@@ -688,6 +694,27 @@ namespace NovaGM.ViewModels
             HubCharacters.Add(sheet);
             SelectedHubCharacter = sheet;
             _inventoryService.SaveInventory(key, character.Inventory);
+        }
+
+        private Task DeleteHubCharacterAsync()
+        {
+            var target = SelectedHubCharacter;
+            if (target is null) return Task.CompletedTask;
+
+            var name = target.Character.Name;
+
+            // Unregister from TurnEngine so their slot doesn't block turn advancement
+            _turnEngine.RemovePlayer(name);
+
+            // Remove from UI list and select next available character
+            HubCharacters.Remove(target);
+            SelectedHubCharacter = HubCharacters.Count > 0 ? HubCharacters[^1] : null;
+
+            // Clean up persisted inventory snapshot
+            _inventoryService.RemoveInventory(InventoryKeys.ForHubCharacter(name));
+
+            Messages.Add(new Message("System", $"{name} has been removed."));
+            return Task.CompletedTask;
         }
 
         private static Character CreateCharacterFromDraft(CharacterDraft draft)

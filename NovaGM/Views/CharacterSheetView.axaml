@@ -136,35 +136,36 @@
       </Grid>
     </Border>
 
-    <!-- Right: Stats & equipped list -->
+    <!-- Right: Stats, equipped list, and full inventory — single scrollable panel -->
     <Border Grid.Row="1" Grid.Column="1"
             CornerRadius="{DynamicResource Radius.MD}"
             Background="{DynamicResource Brush.SurfaceAlt}"
             Padding="12"
             Margin="8,0,0,0">
-      <StackPanel Spacing="10">
-        <TextBlock Text="Attributes" FontWeight="Bold"/>
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="10">
+          <TextBlock Text="Attributes" FontWeight="Bold"/>
 
-        <!-- Simple two-column grid for stats with modifiers -->
-        <UniformGrid Columns="2" Rows="6">
-          <TextBlock Text="STR"/>
-          <TextBlock Text="{Binding STRDisplay}"/>
-          <TextBlock Text="DEX"/>
-          <TextBlock Text="{Binding DEXDisplay}"/>
-          <TextBlock Text="CON"/>
-          <TextBlock Text="{Binding CONDisplay}"/>
-          <TextBlock Text="INT"/>
-          <TextBlock Text="{Binding INTDisplay}"/>
-          <TextBlock Text="WIS"/>
-          <TextBlock Text="{Binding WISDisplay}"/>
-          <TextBlock Text="CHA"/>
-          <TextBlock Text="{Binding CHADisplay}"/>
-        </UniformGrid>
+          <!-- Simple two-column grid for stats with modifiers -->
+          <UniformGrid Columns="2" Rows="6">
+            <TextBlock Text="STR"/>
+            <TextBlock Text="{Binding STRDisplay}"/>
+            <TextBlock Text="DEX"/>
+            <TextBlock Text="{Binding DEXDisplay}"/>
+            <TextBlock Text="CON"/>
+            <TextBlock Text="{Binding CONDisplay}"/>
+            <TextBlock Text="INT"/>
+            <TextBlock Text="{Binding INTDisplay}"/>
+            <TextBlock Text="WIS"/>
+            <TextBlock Text="{Binding WISDisplay}"/>
+            <TextBlock Text="CHA"/>
+            <TextBlock Text="{Binding CHADisplay}"/>
+          </UniformGrid>
 
-        <Separator/>
+          <Separator/>
 
-        <TextBlock Text="Equipped" FontWeight="Bold"/>
-        <ScrollViewer MaxHeight="140" HorizontalScrollBarVisibility="Disabled">
+          <TextBlock Text="Equipped" FontWeight="Bold"/>
           <ItemsControl ItemsSource="{Binding EquippedList}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="models:Item">
@@ -176,11 +177,9 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
-        </ScrollViewer>
 
-        <Separator Margin="0,8,0,0"/>
-        <TextBlock Text="Inventory" FontWeight="Bold" Margin="0,4,0,4"/>
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+          <Separator Margin="0,8,0,0"/>
+          <TextBlock Text="Inventory" FontWeight="Bold" Margin="0,4,0,4"/>
           <ItemsControl ItemsSource="{Binding InventorySlots}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
@@ -209,8 +208,8 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
-        </ScrollViewer>
-      </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
     </Border>
   </Grid>
 </UserControl>
