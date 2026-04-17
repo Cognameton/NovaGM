@@ -27,6 +27,13 @@ namespace NovaGM.Services.Streaming
                 kv.Value.Writer.TryWrite(chunk); // best-effort
         }
 
+        /// Publish a structured typed event. Encoded as "§{type}§{name}§{jsonData}" so
+        /// the SSE endpoint can emit a named event instead of a raw data line.
+        /// <paramref name="name"/> identifies the speaker (player name or empty for GM events).
+        /// <paramref name="data"/> is the text payload (will be JSON-escaped server-side).
+        public void PublishEvent(string type, string name, string data)
+            => Publish($"§{type}§{name}§{data}");
+
         /// Subscribe to a stream of chunks. Disposes automatically on cancellation.
         public async IAsyncEnumerable<string> Subscribe([EnumeratorCancellation] CancellationToken ct)
         {

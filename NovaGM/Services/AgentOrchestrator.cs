@@ -481,7 +481,9 @@ namespace NovaGM.Services
 
             // Controller gets a larger context: ReAct loop accumulates prompt across
             // multiple THOUGHT/ACTION/OBSERVATION cycles before producing a Beat.
-            await _controller.LoadAsync(ctrlPath, ctxSize: 4096, gpuLayers: gpuLayers);
+            // 8 192 gives the controller headroom for a ~3 000-token system prompt +
+            // rolling context + up to 4 THOUGHT/ACTION/OBSERVATION cycles + FINAL_ANSWER.
+            await _controller.LoadAsync(ctrlPath, ctxSize: 8192, gpuLayers: gpuLayers);
             await _memory.LoadAsync(memPath,    ctxSize: 4096, gpuLayers: gpuLayers);
             await _narrator.LoadAsync(narrPath, ctxSize: 4096, gpuLayers: gpuLayers);
 

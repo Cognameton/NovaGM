@@ -24,7 +24,7 @@ namespace NovaGM.Services.Agent
 
         // Tokens the LLM may emit per reasoning step.
         // Must be large enough for THOUGHT + full FINAL_ANSWER JSON (~600-800 tokens).
-        private const int TokensPerStep = 896;
+        private const int TokensPerStep = 1200;
 
         // How many past-turn summaries to keep in the rolling context.
         private const int MaxContextEntries = 8;
@@ -75,10 +75,21 @@ namespace NovaGM.Services.Agent
             int modelOutputStart = prompt.Length;
             Beat? result = null;
 
+            Console.WriteLine($"[Controller] Starting ReAct loop (max {MaxIterations} iterations) for: \"{(playerText.Length > 60 ? playerText[..60] + "…" : playerText)}\"");
+
             for (int i = 0; i < MaxIterations && !ct.IsCancellationRequested; i++)
             {
+                Console.WriteLine($"[Controller] Iteration {i + 1}/{MaxIterations} — calling LLM ({TokensPerStep} tokens)");
                 var response = await _llm.CompleteAsync(prompt.ToString(), TokensPerStep, ct);
-                if (string.IsNullOrWhiteSpace(response)) break;
+                if (string.IsNullOrWhiteSpace(response))
+                {
+                    Console.WriteLine($"[Controller] Iteration {i + 1}: LLM returned empty/null — breaking");
+                    break;
+                }
+
+                // Log first 200 chars of raw response for diagnostics
+                var preview = response.Length > 200 ? response[..200].Replace('\n', '↵') + "…" : response.Replace('\n', '↵');
+                Console.WriteLine($"[Controller] Iteration {i + 1} raw: {preview}");
 
                 prompt.Append(response);
 
@@ -86,6 +97,7 @@ namespace NovaGM.Services.Agent
                 var beat = TryExtractFinalAnswer(response);
                 if (beat != null)
                 {
+                    Console.WriteLine($"[Controller] Iteration {i + 1}: FINAL_ANSWER found — beat title=\"{beat.Title ?? "(none)"}\"");
                     result = beat;
                     break;
                 }
@@ -94,13 +106,16 @@ namespace NovaGM.Services.Agent
                 var (toolName, toolArgs) = TryExtractAction(response);
                 if (toolName != null)
                 {
+                    Console.WriteLine($"[Controller] Iteration {i + 1}: ACTION={toolName} args={toolArgs}");
                     var observation = await ToolDispatcher.DispatchAsync(toolName, toolArgs ?? "{}", _state, _retriever, actingPlayerId);
+                    Console.WriteLine($"[Controller] Iteration {i + 1}: OBSERVATION={observation}");
                     prompt.AppendLine($"\nOBSERVATION: {observation}");
                     prompt.AppendLine("Assistant:");
                     continue;
                 }
 
                 // No structured output — nudge model toward a conclusion
+                Console.WriteLine($"[Controller] Iteration {i + 1}: no ACTION or FINAL_ANSWER — nudging model");
                 prompt.AppendLine("\n[System: write THOUGHT then either ACTION <tool> {args} or FINAL_ANSWER {json}]");
                 prompt.AppendLine("Assistant:");
             }
@@ -110,10 +125,15 @@ namespace NovaGM.Services.Agent
             // that player-injected text in the prompt prefix cannot be matched.
             if (result == null)
             {
+                Console.WriteLine("[Controller] Loop exhausted — attempting forced extraction from full model output");
                 var modelOutput = prompt.Length > modelOutputStart
                     ? prompt.ToString(modelOutputStart, prompt.Length - modelOutputStart)
                     : string.Empty;
                 result = TryExtractFinalAnswer(modelOutput);
+                if (result != null)
+                    Console.WriteLine($"[Controller] Forced extraction succeeded — beat title=\"{result.Title ?? "(none)"}\"");
+                else
+                    Console.WriteLine("[Controller] Forced extraction failed — returning null (fallback will fire)");
             }
 
             // Persist a summary + suggestions into the rolling context so the next turn

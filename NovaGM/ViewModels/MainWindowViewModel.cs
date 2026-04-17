@@ -232,6 +232,9 @@ namespace NovaGM.ViewModels
                 Messages.Clear();
                 Messages.Add(new Message("GM", "New game started. Select a genre from the Genre menu, then type an action or describe the scene to begin."));
 
+                // Notify connected players so their Table view resets
+                LocalBroadcaster.Instance.PublishEvent("new_game", "", "");
+
                 // Update compendium with default content
                 UpdateCompendiumForGenre();
 
@@ -469,7 +472,7 @@ namespace NovaGM.ViewModels
         {
             var gm = new Message("GM", "");
             Dispatcher.UIThread.Post(() => Messages.Add(gm));
-            broadcaster.Publish("GM: ");
+            broadcaster.PublishEvent("gm_start", "", "");
 
             var final = await _agent.RunGmTurnAsync(
                 _sessionCts.Token,
@@ -484,7 +487,7 @@ namespace NovaGM.ViewModels
             {
                 if (!string.IsNullOrEmpty(final) && !gm.Content.Equals(final))
                     gm.Content = final;
-                broadcaster.Publish("\n");
+                broadcaster.PublishEvent("gm_end", "", "");
                 if (!string.IsNullOrWhiteSpace(final))
                     MessageHistoryService.AddMessage(new Models.Message("GM", final));
             });
@@ -561,12 +564,12 @@ namespace NovaGM.ViewModels
                     Messages.Add(playerMessage);
                     MessageHistoryService.AddMessage(new Models.Message(displayName, text));
                 });
-                broadcaster.Publish($"{displayName}: {text}\n");
+                broadcaster.PublishEvent("player", displayName, text);
 
                 // Stream GM response
                 var gm = new Message("GM", "");
                 Dispatcher.UIThread.Post(() => Messages.Add(gm));
-                broadcaster.Publish("GM: ");
+                broadcaster.PublishEvent("gm_start", "", "");
 
                 var final = await _agent.RunTurnAsync(
                     inputText,
@@ -582,7 +585,7 @@ namespace NovaGM.ViewModels
                 {
                     if (!string.IsNullOrEmpty(final) && !gm.Content.Equals(final))
                         gm.Content = final;
-                    broadcaster.Publish("\n");
+                    broadcaster.PublishEvent("gm_end", "", "");
                     MessageHistoryService.AddMessage(new Models.Message("GM", gm.Content));
                 });
 
@@ -669,6 +672,13 @@ namespace NovaGM.ViewModels
             var key = InventoryKeys.ForHubCharacter(character.Name);
             character.Inventory = _inventoryService.GetInventory(key);
             var sheet = new CharacterSheetViewModel(character);
+
+            // Remove old hub character from TurnEngine and register the new one
+            if (HubCharacters.Count > 0 && HubCharacters[0].Character.Name != character.Name)
+            {
+                _turnEngine.RemovePlayer(HubCharacters[0].Character.Name);
+                _turnEngine.AddPlayer(character.Name);
+            }
 
             if (HubCharacters.Count == 1 && ReferenceEquals(HubCharacters[0], CharacterSheet))
             {

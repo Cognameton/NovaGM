@@ -253,8 +253,17 @@ input:focus, textarea:focus { outline: none; border-color: var(--primary); }
 .inv-cell { border: 1px solid var(--border); border-radius: 6px; background: var(--surface-deep); min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px; font-size: 11px; color: var(--text); text-align: center; word-break: break-word; }
 .inv-cell.empty { opacity: 0.3; }
 .inv-cell .qty { font-size: 10px; color: var(--muted); margin-top: 2px; }
-.log { white-space: pre-wrap; font-family: 'Consolas', monospace; font-size: 13px; background: var(--surface-deep); border: 1px solid var(--border); border-radius: 8px; padding: 10px; overflow-y: auto; height: calc(100vh - 185px); color: var(--text); flex: 1; }
-.action-bar { margin-top: 10px; display: flex; gap: 8px; align-items: flex-end; }
+.feed { flex: 1; overflow-y: auto; padding: 10px 4px; display: flex; flex-direction: column; gap: 10px; }
+.bubble { display: flex; flex-direction: column; max-width: 88%; }
+.bubble.player { align-self: flex-end; align-items: flex-end; }
+.bubble.gm    { align-self: flex-start; align-items: flex-start; }
+.bubble.sys   { align-self: center; align-items: center; }
+.bubble-header { font-size: 11px; color: var(--muted); margin-bottom: 3px; font-weight: 600; letter-spacing: 0.3px; }
+.bubble-body { border-radius: 12px; padding: 10px 14px; font-size: 13px; line-height: 1.55; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+.bubble.player .bubble-body { background: #1a2040; border: 1px solid var(--primary); border-bottom-right-radius: 3px; }
+.bubble.gm     .bubble-body { background: var(--surface-alt); border: 1px solid var(--border); border-bottom-left-radius: 3px; }
+.bubble.sys    .bubble-body { background: transparent; border: none; font-style: italic; color: var(--muted); font-size: 12px; padding: 2px 0; }
+.action-bar { margin-top: 10px; display: flex; gap: 8px; align-items: flex-end; border-top: 1px solid var(--border); padding-top: 10px; }
 .action-bar textarea { flex: 1; min-height: 3.5em; resize: vertical; }
 </style>
 </head>
@@ -349,10 +358,10 @@ input:focus, textarea:focus { outline: none; border-color: var(--primary); }
 </section>
 
 <section id='view-table' class='view'>
-  <div class='card' style='flex:1;display:flex;flex-direction:column;'>
-    <div id='log' class='log'></div>
+  <div class='card' style='flex:1;display:flex;flex-direction:column;overflow:hidden;'>
+    <div id='feed' class='feed'></div>
     <div class='action-bar'>
-      <textarea id='msg' placeholder='Your action... (Enter to send, Shift+Enter for new line)'></textarea>
+      <textarea id='msg' placeholder='Your action… (Enter to send, Shift+Enter for new line)'></textarea>
       <button id='send' class='btn'>Send</button>
     </div>
   </div>
@@ -615,28 +624,91 @@ if (msg) {
   });
 }
 
-const log = document.getElementById('log');
+const feed = document.getElementById('feed');
+let currentGmBubble = null;
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function addBubble(role, name, text) {
+  const wrap = document.createElement('div');
+  wrap.className = 'bubble ' + role;
+  const hdr = document.createElement('div');
+  hdr.className = 'bubble-header';
+  hdr.textContent = name;
+  const body = document.createElement('div');
+  body.className = 'bubble-body';
+  body.textContent = text;
+  if (name) wrap.appendChild(hdr);
+  wrap.appendChild(body);
+  feed.appendChild(wrap);
+  feed.scrollTop = feed.scrollHeight;
+  return wrap;
+}
+
+function startGmBubble() {
+  currentGmBubble = document.createElement('div');
+  currentGmBubble.className = 'bubble gm';
+  const hdr = document.createElement('div');
+  hdr.className = 'bubble-header';
+  hdr.textContent = 'GM';
+  const body = document.createElement('div');
+  body.className = 'bubble-body';
+  currentGmBubble.appendChild(hdr);
+  currentGmBubble.appendChild(body);
+  feed.appendChild(currentGmBubble);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function appendToGmBubble(text) {
+  if (!currentGmBubble) startGmBubble();
+  const body = currentGmBubble.querySelector('.bubble-body');
+  if (body) body.textContent += text;
+  feed.scrollTop = feed.scrollHeight;
+}
+
 async function loadHistory() {
+  if (!feed) return;
   try {
     const r = await fetch('/history?code=' + encodeURIComponent(codeV));
-    if (r.ok) {
-      const history = await r.json();
-      if (log) {
-        log.textContent = '';
-        history.forEach(message => {
-          if (message.content && message.content.trim())
-            log.textContent += message.role + ': ' + message.content + '\n';
-        });
-        log.scrollTop = log.scrollHeight;
-      }
-    }
+    if (!r.ok) return;
+    const history = await r.json();
+    history.forEach(msg => {
+      if (!msg.content || !msg.content.trim()) return;
+      if (msg.role === 'GM') addBubble('gm', 'GM', msg.content);
+      else addBubble('player', msg.role, msg.content);
+    });
+    feed.scrollTop = feed.scrollHeight;
   } catch (err) { console.error('Failed to load history', err); }
 }
 
-if (log) {
+if (feed) {
   loadHistory();
   const es = new EventSource('/stream?code=' + encodeURIComponent(codeV));
-  es.onmessage = e => { log.textContent += e.data; log.scrollTop = log.scrollHeight; };
+
+  // Player action bubble
+  es.addEventListener('player', e => {
+    const d = JSON.parse(e.data);
+    addBubble('player', d.name || nameV, d.text || '');
+  });
+
+  // GM narrative start
+  es.addEventListener('gm_start', () => { startGmBubble(); });
+
+  // GM narrative end
+  es.addEventListener('gm_end', () => { currentGmBubble = null; });
+
+  // New game cleared
+  es.addEventListener('new_game', () => {
+    feed.innerHTML = '';
+    currentGmBubble = null;
+    addBubble('sys', '', 'A new game has begun.');
+  });
+
+  // Legacy raw tokens (narrator streaming)
+  es.onmessage = e => { appendToGmBubble(e.data); };
+
   es.onerror = () => console.log('Stream disconnected, reconnecting...');
 }
 
@@ -910,7 +982,25 @@ loadCharacter();
                                    {
                                        await foreach (var chunk in LocalBroadcaster.Instance.Subscribe(token))
                                        {
-                                           await ctx.Response.WriteAsync($"data: {chunk}\n\n", token);
+                                           // Typed events are encoded as "§type§name§data"
+                                           if (chunk.StartsWith("§"))
+                                           {
+                                               var parts = chunk.Split('§', 4);
+                                               // parts: ["", type, name, data]
+                                               var evtType = parts.Length > 1 ? parts[1] : "msg";
+                                               var evtName = parts.Length > 2 ? parts[2] : "";
+                                               var evtData = parts.Length > 3 ? parts[3] : "";
+                                               var json = JsonSerializer.Serialize(
+                                                   new { name = evtName, text = evtData },
+                                                   new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+                                               await ctx.Response.WriteAsync($"event: {evtType}\ndata: {json}\n\n", token);
+                                           }
+                                           else
+                                           {
+                                               // Raw narrator token — escape newlines so SSE framing stays valid
+                                               var safe = chunk.Replace("\n", " ");
+                                               await ctx.Response.WriteAsync($"data: {safe}\n\n", token);
+                                           }
                                            await ctx.Response.Body.FlushAsync(token);
                                        }
                                    }
