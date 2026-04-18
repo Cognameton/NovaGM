@@ -252,6 +252,51 @@ namespace NovaGM.Services.State
             _pendingTransition = null;
         }
 
+        public void Reset()
+        {
+            _state.Location = "";
+            _state.Scene = new WorldScene();
+            _state.Flags.Clear();
+            _state.Facts.Clear();
+            _state.Hooks.Clear();
+            _state.Npcs.Clear();
+            _state.Inventories.Clear();
+            _state.ArchivedScenes.Clear();
+            _state.TurnState = new TurnState();
+            _state.PlayerCharacters.Clear();
+            _pendingTransition = null;
+            LastSuggestions = Array.Empty<string>();
+            Save();
+        }
+
+        // ── Player character persistence ──────────────────────────────────────
+
+        public void SavePlayerCharacter(string playerId, PlayerCharacterSnapshot snapshot)
+        {
+            if (string.IsNullOrWhiteSpace(playerId) || snapshot is null) return;
+            _state.PlayerCharacters[NormalizeKey(playerId)] = snapshot;
+            Save();
+        }
+
+        public PlayerCharacterSnapshot? LoadPlayerCharacter(string playerId)
+        {
+            if (string.IsNullOrWhiteSpace(playerId)) return null;
+            _state.PlayerCharacters.TryGetValue(NormalizeKey(playerId), out var snap);
+            return snap;
+        }
+
+        public string[] GetKnownPlayerIds() =>
+            _state.PlayerCharacters.Keys.ToArray();
+
+        public void RemovePlayerCharacter(string playerId)
+        {
+            if (string.IsNullOrWhiteSpace(playerId)) return;
+            if (_state.PlayerCharacters.Remove(NormalizeKey(playerId)))
+                Save();
+        }
+
+        private static string NormalizeKey(string id) => (id ?? "").Trim().ToUpperInvariant();
+
         // ── Helpers ───────────────────────────────────────────────────────────
 
         private static GameState CreateEmpty() => new GameState { Location = "" };

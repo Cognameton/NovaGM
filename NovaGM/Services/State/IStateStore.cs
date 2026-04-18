@@ -52,6 +52,24 @@ namespace NovaGM.Services.State
         /// <summary>Flushes the current in-memory state to disk immediately.</summary>
         void Save();
 
+        /// <summary>Wipes all persisted game state (location, scene, flags, facts, hooks, inventories)
+        /// so the next turn triggers the OPENING SEQUENCE.</summary>
+        void Reset();
+
+        // ── Player character persistence ──────────────────────────────────────
+
+        /// <summary>Persists a player's character snapshot so it survives session restarts.</summary>
+        void SavePlayerCharacter(string playerId, PlayerCharacterSnapshot snapshot);
+
+        /// <summary>Returns a previously-saved character snapshot, or null if not found.</summary>
+        PlayerCharacterSnapshot? LoadPlayerCharacter(string playerId);
+
+        /// <summary>Returns the normalized IDs of all players with saved character data.</summary>
+        string[] GetKnownPlayerIds();
+
+        /// <summary>Removes a player's saved character data (called on new game or kick).</summary>
+        void RemovePlayerCharacter(string playerId);
+
         /// <summary>The suggestions offered at the end of the last turn, in order. Empty when no turn has run yet.</summary>
         string[] LastSuggestions { get; set; }
     }

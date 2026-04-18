@@ -45,6 +45,9 @@ namespace NovaGM.Services.Agent
 
         public void SetRetriever(Retriever retriever) => _retriever = retriever;
 
+        /// Clear the rolling turn history so the next turn triggers the OPENING SEQUENCE.
+        public void ResetContext() => _rollingContext.Clear();
+
         // Keywords that must not appear in user-controlled fields to prevent prompt injection.
         private static readonly string[] InjectionKeywords = { "FINAL_ANSWER:", "ACTION:", "OBSERVATION:" };
 
@@ -70,7 +73,19 @@ namespace NovaGM.Services.Agent
             // Sanitize only the player-supplied string — facts and compact are server-generated.
             playerText = SanitizeUserInput(playerText);
 
-            var prompt = BuildInitialPrompt(playerText, facts, compact, genreContext, schema);
+            // Opening-turn bootstrap: if this is the first turn AND there is no location in state,
+            // pre-execute get_player and inject results so the model has player data without a tool call.
+            // This ensures genre-appropriate content can be seeded on the very first beat.
+            bool isOpeningTurn = _rollingContext.Count == 0 && !compact.Contains("location=");
+            string? openingBootstrap = null;
+            if (isOpeningTurn)
+            {
+                Console.WriteLine("[Controller] Opening turn detected — pre-executing get_player");
+                openingBootstrap = await ToolDispatcher.DispatchAsync("get_player", "{}", _state, _retriever, actingPlayerId);
+                Console.WriteLine($"[Controller] Opening bootstrap: {openingBootstrap}");
+            }
+
+            var prompt = BuildInitialPrompt(playerText, facts, compact, genreContext, schema, openingBootstrap);
             // Record where the system portion ends so we only search model output for markers.
             int modelOutputStart = prompt.Length;
             Beat? result = null;
@@ -164,7 +179,8 @@ namespace NovaGM.Services.Agent
 
         private StringBuilder BuildInitialPrompt(
             string playerText, string facts, string compact,
-            string genreContext, string schema)
+            string genreContext, string schema,
+            string? openingBootstrap = null)
         {
             var sb = new StringBuilder();
 
@@ -184,7 +200,19 @@ namespace NovaGM.Services.Agent
             sb.AppendLine($"Player action: {playerText}");
             sb.AppendLine($"Recent facts: {facts}");
             sb.AppendLine($"World state: {compact}");
-            sb.AppendLine("\nThink step by step. Use tools as needed, then produce FINAL_ANSWER.");
+
+            // Opening turn: inject pre-executed player lookup and direct the model to proceed
+            // with seeding the scene (add_scene_npc, add_scene_item) before FINAL_ANSWER.
+            if (!string.IsNullOrWhiteSpace(openingBootstrap))
+            {
+                sb.AppendLine($"\nOBSERVATION (get_player): {openingBootstrap}");
+                sb.AppendLine("[OPENING SEQUENCE: player data above. Now call add_scene_npc (genre-appropriate outfitter), then add_scene_item x4-6. After items are added, output FINAL_ANSWER.]");
+            }
+            else
+            {
+                sb.AppendLine("\nThink step by step. Use tools as needed, then produce FINAL_ANSWER.");
+            }
+
             sb.AppendLine("Assistant:");
 
             return sb;

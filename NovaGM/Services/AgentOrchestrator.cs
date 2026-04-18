@@ -26,6 +26,13 @@ namespace NovaGM.Services
 
         public IStateStore StateStore => _state; // Expose for mission saving
 
+        /// Wipe all persisted state and controller context so the next turn triggers the OPENING SEQUENCE.
+        public void ResetForNewGame()
+        {
+            _state.Reset();
+            _controllerAgent?.ResetContext();
+        }
+
         private Retriever? _retriever;
         private ControllerAgent? _controllerAgent;
         private bool _loadAttempted;
@@ -634,7 +641,11 @@ namespace NovaGM.Services
         private static string TruncateAtEot(string text)
         {
             if (string.IsNullOrEmpty(text)) return text ?? string.Empty;
+            // Full sentinel first
             var idx = text.IndexOf("<EOT>", StringComparison.Ordinal);
+            if (idx >= 0) return text.Substring(0, idx);
+            // Partial sentinel — prevents streaming "<EOT" before the ">" arrives
+            idx = text.IndexOf("<EOT", StringComparison.Ordinal);
             return idx >= 0 ? text.Substring(0, idx) : text;
         }
 

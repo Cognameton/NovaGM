@@ -38,6 +38,14 @@ namespace NovaGM.Models
         /// <summary>Turn tracking for the multi-player round system.</summary>
         public TurnState TurnState { get; set; } = new();
 
+        /// <summary>
+        /// Persisted player character data keyed by normalized player name (upper-case).
+        /// Populated when a player saves their character; survives session restarts so
+        /// the controller can query absent-but-known players and returning players skip
+        /// character creation.
+        /// </summary>
+        public Dictionary<string, PlayerCharacterSnapshot> PlayerCharacters { get; } = new();
+
         public bool HasPremise => !string.IsNullOrWhiteSpace(Premise);
     }
 }

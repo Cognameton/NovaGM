@@ -43,7 +43,7 @@ namespace NovaGM.Services.Agent
                 return toolName.ToLowerInvariant().Trim() switch
                 {
                     "roll_dice"        => RollDice(args),
-                    "get_player"       => GetPlayer(args),
+                    "get_player"       => GetPlayer(args, state),
                     "get_npc"          => GetNpc(args, state),
                     "get_flags"        => GetFlags(state),
                     "set_flag"         => SetFlag(args, state),
@@ -71,15 +71,22 @@ namespace NovaGM.Services.Agent
             return result.Description;
         }
 
-        private static string GetPlayer(Dictionary<string, JsonElement> args)
+        private static string GetPlayer(Dictionary<string, JsonElement> args, IStateStore state)
         {
             var name = GetString(args, "name") ?? "";
             var pc   = GameCoordinator.Instance.GetPlayerCharacter(name);
-            if (pc == null)
-                return $"Player '{name}' not found. Connected players: {string.Join(", ", GameCoordinator.Instance.GetConnectedPlayers())}";
 
+            if (pc == null)
+            {
+                var connected = GameCoordinator.Instance.GetConnectedPlayers();
+                return connected.Length > 0
+                    ? $"Player '{name}' not found. Connected: {string.Join(", ", connected)}"
+                    : $"No players connected yet. Known players: {string.Join(", ", state.GetKnownPlayerIds())}";
+            }
+
+            var suffix = GameCoordinator.Instance.IsJoined(name) ? "" : " [not connected this session]";
             return $"{pc.Name} | Race: {pc.Race} | Class: {pc.Class} | Level: {pc.Level} " +
-                   $"| STR:{pc.STR} DEX:{pc.DEX} CON:{pc.CON} INT:{pc.INT} WIS:{pc.WIS} CHA:{pc.CHA}";
+                   $"| STR:{pc.STR} DEX:{pc.DEX} CON:{pc.CON} INT:{pc.INT} WIS:{pc.WIS} CHA:{pc.CHA}{suffix}";
         }
 
         private static string GetNpc(Dictionary<string, JsonElement> args, IStateStore state)

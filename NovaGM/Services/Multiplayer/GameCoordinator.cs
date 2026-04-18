@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using NovaGM.Models;
+using NovaGM.Services.State;
 
 namespace NovaGM.Services.Multiplayer
 {
@@ -55,6 +56,13 @@ namespace NovaGM.Services.Multiplayer
         /// </summary>
         private readonly ConcurrentDictionary<string, bool> _joinedPlayers = new(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>
+        /// Fired after a player's character is saved. Provides the normalized player id
+        /// and the character. Subscribers (e.g. MainWindowViewModel) use this to persist
+        /// the snapshot to disk so it survives session restarts.
+        /// </summary>
+        public event Action<string, PlayerCharacter>? CharacterSaved;
+
         public string CurrentCode { get; private set; }
         public SessionSettings Session { get; } = new SessionSettings();
 
@@ -90,6 +98,9 @@ namespace NovaGM.Services.Multiplayer
             // Mark the player as fully joined now that their character is saved.
             // This is the authoritative join moment — not when they send their first message.
             _joinedPlayers[key] = true;
+
+            // Notify subscribers (e.g. ViewModel) so they can persist the snapshot to disk.
+            CharacterSaved?.Invoke(key, pc);
         }
 
         /// <summary>Returns true if the player has completed character creation and is fully joined.</summary>
@@ -174,6 +185,50 @@ namespace NovaGM.Services.Multiplayer
         public void SetGenreContext(string genre)
         {
             Session.GenreContext = genre?.Trim() ?? string.Empty;
+        }
+
+        /// <summary>
+        /// Clears all in-memory player data. Call on New Game so no ghost characters
+        /// from the previous session linger in the coordinator.
+        /// </summary>
+        public void ResetPlayers()
+        {
+            _players.Clear();
+            _joinedPlayers.Clear();
+        }
+
+        /// <summary>
+        /// Re-hydrates player character data from persisted snapshots so that
+        /// <see cref="GetPlayerCharacter"/> returns useful data for previously-known
+        /// players even before they reconnect this session.
+        /// Loaded players are NOT marked as joined — they won't receive turns until
+        /// they reconnect and call <see cref="SetCharacter"/>.
+        /// </summary>
+        public void LoadKnownPlayers(IStateStore store)
+        {
+            foreach (var id in store.GetKnownPlayerIds())
+            {
+                var snap = store.LoadPlayerCharacter(id);
+                if (snap is null) continue;
+                var key = NormalizeKey(id);
+                // Only restore if not already connected this session
+                if (!_players.ContainsKey(key))
+                {
+                    _players[key] = new PlayerCharacter
+                    {
+                        Name  = snap.Name,
+                        Race  = snap.Race,
+                        Class = snap.Class,
+                        Level = snap.Level,
+                        STR   = snap.STR,
+                        DEX   = snap.DEX,
+                        CON   = snap.CON,
+                        INT   = snap.INT,
+                        WIS   = snap.WIS,
+                        CHA   = snap.CHA
+                    };
+                }
+            }
         }
     }
 }

@@ -169,6 +169,27 @@ namespace NovaGM.ViewModels
             // Register hub player; remote players register when they fully join (character saved)
             _turnEngine.AddPlayer(CharacterSheet.Character.Name);
 
+            // Persist player character snapshot whenever a player saves their character
+            GameCoordinator.Instance.CharacterSaved += (playerId, pc) =>
+            {
+                _agent.StateStore.SavePlayerCharacter(playerId, new NovaGM.Models.PlayerCharacterSnapshot
+                {
+                    Name  = pc.Name,
+                    Race  = pc.Race,
+                    Class = pc.Class,
+                    Level = pc.Level ?? 1,
+                    STR   = pc.STR,
+                    DEX   = pc.DEX,
+                    CON   = pc.CON,
+                    INT   = pc.INT,
+                    WIS   = pc.WIS,
+                    CHA   = pc.CHA
+                });
+            };
+
+            // Reconcile players from the previous session against those connected now
+            ReconcileOnResume();
+
             // Minimal compendium placeholders
             Compendium.Add(new CompendiumEntry { Category = "Race",   Name = "Human",      Description = "Versatile and adaptable." });
             Compendium.Add(new CompendiumEntry { Category = "Race",   Name = "Elf",        Description = "Graceful, keen senses." });
@@ -230,8 +251,10 @@ namespace NovaGM.ViewModels
             // Menu commands
             NewGameCommand = new RelayCommand(_ =>
             {
-                // Reset genre manager and turn engine for new game
+                // Reset genre manager, orchestrator state, player roster, and turn engine for new game
                 GenreManager.ResetForNewGame();
+                _agent.ResetForNewGame();           // wipes StateStore + controller context
+                GameCoordinator.Instance.ResetPlayers(); // clears in-memory player data
                 _turnEngineStarted = false;
                 _welcomedPlayers.Clear();
 
@@ -430,6 +453,45 @@ namespace NovaGM.ViewModels
                         Messages.Add(new Message("System", "Lost connection to player network. Restart the session to reconnect.")));
                 }
             });
+        }
+
+        /// <summary>
+        /// On session resume, reconcile which players from the previous session are
+        /// present vs. absent. Loads known player data into GameCoordinator (so the
+        /// controller can query them even before they reconnect), removes absent players
+        /// from the TurnEngine so the turn order doesn't stall, and shows the GM a
+        /// message listing who hasn't joined yet.
+        /// </summary>
+        private void ReconcileOnResume()
+        {
+            // Re-hydrate previously-known player characters so the controller's get_player
+            // tool returns useful data even for players who haven't reconnected yet.
+            GameCoordinator.Instance.LoadKnownPlayers(_agent.StateStore);
+
+            // Find players that were active in the previous session but aren't connected now.
+            var hubName = CharacterSheet.Character.Name;
+            var absent = _turnEngine.ActivePlayers
+                .Where(p => !string.Equals(p, hubName, StringComparison.OrdinalIgnoreCase)
+                         && !GameCoordinator.Instance.IsJoined(p))
+                .ToList();
+
+            if (absent.Count > 0)
+            {
+                // Remove ghost players from the turn roster — they'll be re-added when they connect.
+                foreach (var p in absent)
+                    _turnEngine.RemovePlayer(p);
+
+                var nameList = string.Join(", ", absent.Select(p =>
+                {
+                    // Show display name if snapshot exists, otherwise the raw id
+                    var snap = _agent.StateStore.LoadPlayerCharacter(p);
+                    return snap?.Name ?? p;
+                }));
+                Dispatcher.UIThread.Post(() =>
+                    Messages.Add(new Message("System",
+                        $"Players from the previous session not yet connected: {nameList}. " +
+                        "They will be added to the turn order when they join.")));
+            }
         }
 
         private static void ShowToolWindow(Func<Window> factory)

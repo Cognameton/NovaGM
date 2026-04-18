@@ -118,6 +118,27 @@ namespace NovaGM.Models
         public string? TransitDestination { get; set; }
     }
 
+    // ── Player character snapshot ─────────────────────────────────────────────
+
+    /// <summary>
+    /// Serializable snapshot of a player character saved between sessions.
+    /// Allows the controller to query known-but-absent players and lets returning
+    /// players skip character creation when their data is already on disk.
+    /// </summary>
+    public sealed class PlayerCharacterSnapshot
+    {
+        public string Name  { get; set; } = "";
+        public string Race  { get; set; } = "";
+        public string Class { get; set; } = "";
+        public int    Level { get; set; } = 1;
+        public int    STR   { get; set; }
+        public int    DEX   { get; set; }
+        public int    CON   { get; set; }
+        public int    INT   { get; set; }
+        public int    WIS   { get; set; }
+        public int    CHA   { get; set; }
+    }
+
     // ── Turn state ────────────────────────────────────────────────────────────
 
     /// <summary>
