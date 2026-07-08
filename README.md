@@ -24,7 +24,7 @@ Players join from any browser on the local network — phone, tablet, laptop —
 - QR code generated at session start for instant join from mobile
 - Server-Sent Events (SSE) stream GM narration to all connected clients simultaneously
 - Room code validation on every player input; stale or forged codes are rejected
-- LAN binding configurable; defaults to localhost for single-machine play
+- LAN binding on by default so players can join from their devices; can be restricted to localhost in Settings
 
 ---
 

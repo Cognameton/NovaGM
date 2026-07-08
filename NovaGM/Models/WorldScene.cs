@@ -137,6 +137,9 @@ namespace NovaGM.Models
         public int    INT   { get; set; }
         public int    WIS   { get; set; }
         public int    CHA   { get; set; }
+
+        /// <summary>Equipped items by slot, so gear survives session restarts.</summary>
+        public Dictionary<EquipmentSlot, Item> Equipment { get; set; } = new();
     }
 
     // ── Turn state ────────────────────────────────────────────────────────────

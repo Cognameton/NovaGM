@@ -20,8 +20,9 @@ namespace NovaGM.Services
         public double NarratorTemperature  { get; set; } = 0.75; // (not exposed in LLamaSharp 0.25.x)
         public double NarratorTopP         { get; set; } = 0.92; // (not exposed in LLamaSharp 0.25.x)
 
-        // LAN hosting
-        public bool AllowLan { get; set; } = false;
+        // LAN hosting. AllowLan defaults to true — players joining from their own
+        // devices is the core experience; it can be turned off in Settings.
+        public bool AllowLan { get; set; } = true;
         public int  HttpPort { get; set; } = 5055;
 
         // Packs
@@ -42,6 +43,10 @@ namespace NovaGM.Services
     {
         private static readonly string PathFile = System.IO.Path.Combine(Paths.AppDataDir, "config.json");
         public static AppConfig Current { get; }
+
+        /// <summary>HttpPort clamped to a valid value (bad config falls back to 5055).</summary>
+        public static int EffectivePort =>
+            Current.HttpPort is > 0 and <= 65535 ? Current.HttpPort : 5055;
 
         static Config()
         {

@@ -66,6 +66,13 @@ namespace NovaGM.Services.Multiplayer
         public string CurrentCode { get; private set; }
         public SessionSettings Session { get; } = new SessionSettings();
 
+        /// <summary>
+        /// Persistent state store used as the single source of truth for player
+        /// inventories. Wired by MainWindowViewModel at startup; endpoints that run
+        /// before the view model exists must tolerate null.
+        /// </summary>
+        public IStateStore? Store { get; set; }
+
         private GameCoordinator()
         {
             CurrentCode = GenerateCode();
@@ -117,7 +124,23 @@ namespace NovaGM.Services.Multiplayer
         {
             pc = new PlayerCharacter();
             if (!string.Equals(code, CurrentCode, StringComparison.OrdinalIgnoreCase)) return false;
-            return _players.TryGetValue(NormalizeKey(name), out pc!);
+            if (!_players.TryGetValue(NormalizeKey(name), out pc!)) return false;
+            // Refresh from the persisted store so items granted mid-turn (give_item)
+            // are visible immediately, not only after the player's next message.
+            if (Store is not null)
+                pc.Inventory = Store.LoadInventory(Inventory.InventoryKeys.ForPlayer(name));
+            return true;
+        }
+
+        /// <summary>
+        /// Persists a player's inventory grid to the state store and re-fires
+        /// <see cref="CharacterSaved"/> so subscribers persist the stats/equipment
+        /// snapshot. Called after web-side equip/unequip mutations.
+        /// </summary>
+        public void PersistCharacter(string name, PlayerCharacter pc)
+        {
+            Store?.SaveInventory(Inventory.InventoryKeys.ForPlayer(name), pc.Inventory);
+            CharacterSaved?.Invoke(NormalizeKey(name), pc);
         }
 
         public async IAsyncEnumerable<PlayerInput> ReadInputsAsync([EnumeratorCancellation] CancellationToken ct)
@@ -216,16 +239,18 @@ namespace NovaGM.Services.Multiplayer
                 {
                     _players[key] = new PlayerCharacter
                     {
-                        Name  = snap.Name,
-                        Race  = snap.Race,
-                        Class = snap.Class,
-                        Level = snap.Level,
-                        STR   = snap.STR,
-                        DEX   = snap.DEX,
-                        CON   = snap.CON,
-                        INT   = snap.INT,
-                        WIS   = snap.WIS,
-                        CHA   = snap.CHA
+                        Name      = snap.Name,
+                        Race      = snap.Race,
+                        Class     = snap.Class,
+                        Level     = snap.Level,
+                        STR       = snap.STR,
+                        DEX       = snap.DEX,
+                        CON       = snap.CON,
+                        INT       = snap.INT,
+                        WIS       = snap.WIS,
+                        CHA       = snap.CHA,
+                        Equipment = new Dictionary<EquipmentSlot, Item>(snap.Equipment),
+                        Inventory = store.LoadInventory(Inventory.InventoryKeys.ForPlayer(id))
                     };
                 }
             }

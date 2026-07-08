@@ -3,6 +3,7 @@ using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using NovaGM.Services;
 using NovaGM.Services.Streaming;
 using NovaGM.Services.Multiplayer;
 using NovaGM.ViewModels;
@@ -11,24 +12,15 @@ namespace NovaGM
 {
     public partial class App : Application
     {
-        private LocalServer? _server;
-
         public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
         public override void OnFrameworkInitializationCompleted()
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                // Start LAN server automatically (restore original functionality)
-
-                var coord = GameCoordinator.Instance;
-                _server = new LocalServer(coord);
-                var port = 5055;
-                var allowLan = true;
-                _server.Start(port, allowLan);
-
-
-
+                // Start the join/HUD web server using the user's saved settings.
+                // Routed through ServicesHost so the exit sequence can stop it.
+                ServicesHost.Start(Config.EffectivePort, Config.Current.AllowLan);
 
                 var mw = new MainWindow
                 {
@@ -45,7 +37,7 @@ namespace NovaGM
         /// Called from menu File→Exit and from window close.
         public void SafeShutdownAndExit()
         {
-            try { _server?.Dispose(); } catch { }
+            try { ServicesHost.Stop(); } catch { }
             try { LocalBroadcaster.Instance.Complete(); } catch { }
             try { GameCoordinator.Instance.ResetRoom(); } catch { }
 
