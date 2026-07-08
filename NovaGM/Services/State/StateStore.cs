@@ -81,6 +81,9 @@ namespace NovaGM.Services.State
             // Move scene items into acting player's inventory
             if (itemsGive is not null && !string.IsNullOrWhiteSpace(actingPlayerId))
             {
+                // Resolve the prefixed inventory key (player:/hub:) — readers all go
+                // through InventoryKeys, so saving under the raw name loses the items.
+                var invKey = Inventory.InventoryKeys.ForActor(actingPlayerId);
                 foreach (var itemId in itemsGive)
                 {
                     var sceneItem = _state.Scene.Items.Find(i =>
@@ -91,14 +94,14 @@ namespace NovaGM.Services.State
                     sceneItem.CollectedBy = actingPlayerId;
 
                     // Add to player's inventory grid
-                    var inv = LoadInventory(actingPlayerId);
+                    var inv = LoadInventory(invKey);
                     inv.TryAdd(new InventoryEntry(
                         sceneItem.Id,
                         sceneItem.Name,
                         quantity: 1,
                         iconPath: null,
                         modifiers: new Dictionary<string, int>()));
-                    SaveInventory(actingPlayerId, inv);
+                    SaveInventory(invKey, inv);
                 }
             }
 

@@ -25,7 +25,9 @@ namespace NovaGM.ViewModels
     {
         public string Title => "NovaGM";
         public string RoomCode => GameCoordinator.Instance.CurrentCode;
-        public string ServerUrl => $"http://{GetLocalIp()}:5055";
+        public string ServerUrl => Config.Current.AllowLan
+            ? $"http://{GetLocalIp()}:{Config.EffectivePort}"
+            : $"http://127.0.0.1:{Config.EffectivePort}";
 
         public ObservableCollection<Message> Messages { get; } = new();
         public ObservableCollection<string> ConnectedPlayers { get; } = new();
@@ -169,6 +171,10 @@ namespace NovaGM.ViewModels
             // Register hub player; remote players register when they fully join (character saved)
             _turnEngine.AddPlayer(CharacterSheet.Character.Name);
 
+            // Give the coordinator the persistent store — it is the single source of
+            // truth for player inventories (web HUD reads and equip writes go through it).
+            GameCoordinator.Instance.Store = _agent.StateStore;
+
             // Persist player character snapshot whenever a player saves their character
             GameCoordinator.Instance.CharacterSaved += (playerId, pc) =>
             {
@@ -183,7 +189,8 @@ namespace NovaGM.ViewModels
                     CON   = pc.CON,
                     INT   = pc.INT,
                     WIS   = pc.WIS,
-                    CHA   = pc.CHA
+                    CHA   = pc.CHA,
+                    Equipment = new Dictionary<EquipmentSlot, Item>(pc.Equipment)
                 });
             };
 
@@ -259,6 +266,9 @@ namespace NovaGM.ViewModels
                 _welcomedPlayers.Clear();
 
                 Messages.Clear();
+                // Also clear the shared history the web /history endpoint serves —
+                // otherwise players who reload their HUD get the previous session's transcript.
+                MessageHistoryService.ClearHistory();
                 Messages.Add(new Message("GM", "New game started. Select a genre from the Genre menu, then type an action or describe the scene to begin."));
 
                 // Notify connected players so their Table view resets

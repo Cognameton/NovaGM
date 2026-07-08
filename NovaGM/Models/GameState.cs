@@ -11,21 +11,25 @@ namespace NovaGM.Models
         /// <summary>Current location label - mirrors Scene.LocationName for backward compat.</summary>
         public string Location { get; set; } = string.Empty;
 
+        // NOTE: all collections below need public setters — System.Text.Json skips
+        // get-only collection properties on deserialize, which silently wiped the
+        // entire saved world state on every app restart.
+
         /// <summary>Freeform flags like night, raining, low-supplies.</summary>
-        public HashSet<string> Flags { get; } = new();
+        public HashSet<string> Flags { get; set; } = new();
 
         /// <summary>Legacy flat NPC map (name to state). Kept for backward compat with old saves.</summary>
-        public Dictionary<string, string> Npcs { get; } = new();
+        public Dictionary<string, string> Npcs { get; set; } = new();
 
         /// <summary>Established world truths the narrator must honour.</summary>
-        public List<string> Facts { get; } = new();
+        public List<string> Facts { get; set; } = new();
 
         /// <summary>Unresolved narrative threads - questions raised, objects noticed but not examined,
         /// people met but not fully understood. Fed back to the Controller on future turns.</summary>
-        public List<string> Hooks { get; } = new();
+        public List<string> Hooks { get; set; } = new();
 
         /// <summary>Player/character identifier to inventory snapshot.</summary>
-        public Dictionary<string, InventoryGridSnapshot> Inventories { get; } = new();
+        public Dictionary<string, InventoryGridSnapshot> Inventories { get; set; } = new();
 
         // ── Rich world model ──────────────────────────────────────────────────
 
@@ -33,7 +37,7 @@ namespace NovaGM.Models
         public WorldScene Scene { get; set; } = new();
 
         /// <summary>Archived scenes keyed by location name. Loaded when party returns.</summary>
-        public Dictionary<string, WorldScene> ArchivedScenes { get; } = new();
+        public Dictionary<string, WorldScene> ArchivedScenes { get; set; } = new();
 
         /// <summary>Turn tracking for the multi-player round system.</summary>
         public TurnState TurnState { get; set; } = new();
@@ -44,7 +48,7 @@ namespace NovaGM.Models
         /// the controller can query absent-but-known players and returning players skip
         /// character creation.
         /// </summary>
-        public Dictionary<string, PlayerCharacterSnapshot> PlayerCharacters { get; } = new();
+        public Dictionary<string, PlayerCharacterSnapshot> PlayerCharacters { get; set; } = new();
 
         public bool HasPremise => !string.IsNullOrWhiteSpace(Premise);
     }

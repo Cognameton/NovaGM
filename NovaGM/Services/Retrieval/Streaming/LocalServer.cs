@@ -846,9 +846,16 @@ loadCharacter();
                                            model = new PlayerCharacter();
                                        }
 
+                                       string StrField(string key)
+                                       {
+                                           if (!pc.TryGetProperty(key, out var v)) return "";
+                                           var s = (v.GetString() ?? "").Trim();
+                                           return s.Length > 64 ? s[..64] : s;
+                                       }
+
                                        model.Name  = pcName;
-                                       model.Race  = (pc.GetProperty("Race").GetString() ?? "")[..Math.Min(64, (pc.GetProperty("Race").GetString() ?? "").Length)];
-                                       model.Class = (pc.GetProperty("Class").GetString() ?? "")[..Math.Min(64, (pc.GetProperty("Class").GetString() ?? "").Length)];
+                                       model.Race  = StrField("Race");
+                                       model.Class = StrField("Class");
                                        model.Level = pc.TryGetProperty("Level", out var level) ? level.GetInt32() : 1;
                                        model.STR = pc.TryGetProperty("STR", out var str) ? str.GetInt32() : 0;
                                        model.DEX = pc.TryGetProperty("DEX", out var dex) ? dex.GetInt32() : 0;
@@ -862,10 +869,12 @@ loadCharacter();
                                        var starters = EquipmentService.BuildStarterEquipment(
                                            model.Class, GenreManager.Current.Genre);
 
-                                       string EqField(string key) =>
-                                           pc.TryGetProperty(key, out var v)
-                                               ? (v.GetString() ?? "").Trim()[..Math.Min(64, (v.GetString() ?? "").Length)]
-                                               : "";
+                                       string EqField(string key)
+                                       {
+                                           if (!pc.TryGetProperty(key, out var v)) return "";
+                                           var s = (v.GetString() ?? "").Trim();
+                                           return s.Length > 64 ? s[..64] : s;
+                                       }
 
                                        var overrides = new Dictionary<EquipmentSlot, string>
                                        {
@@ -965,10 +974,14 @@ loadCharacter();
                                        
                                        // Add to equipment
                                        pc.Equipment[slot] = item;
-                                       
+
                                        // Remove from inventory
                                        pc.Inventory.Remove(itemId, 1);
-                                       
+
+                                       // Persist — otherwise the next inventory refresh
+                                       // from the state store silently reverts this change.
+                                       _coordinator.PersistCharacter(name, pc);
+
                                        ctx.Response.ContentType = "application/json";
                                        await ctx.Response.WriteAsync(JsonSerializer.Serialize(new { success = true }));
                                    }
@@ -1033,7 +1046,11 @@ loadCharacter();
                                        
                                        // Remove from equipment
                                        pc.Equipment.Remove(slot);
-                                       
+
+                                       // Persist — otherwise the next inventory refresh
+                                       // from the state store loses the returned item.
+                                       _coordinator.PersistCharacter(name, pc);
+
                                        ctx.Response.ContentType = "application/json";
                                        await ctx.Response.WriteAsync(JsonSerializer.Serialize(new { success = true }));
                                    }
