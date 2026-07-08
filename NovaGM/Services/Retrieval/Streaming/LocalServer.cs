@@ -295,7 +295,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--primary); }
       <label>WIS<input id='pc_wis' type='number' value='10'/></label>
       <label>CHA<input id='pc_cha' type='number' value='10'/></label>
     </div>
-    <div style='margin-top:10px;margin-bottom:4px;font-size:12px;color:var(--muted);font-weight:600;letter-spacing:0.4px;text-transform:uppercase;'>Starting Equipment <span style='font-weight:400;text-transform:none;'>(leave blank for auto)</span></div>
+    <div style='margin-top:10px;margin-bottom:4px;font-size:12px;color:var(--muted);font-weight:600;letter-spacing:0.4px;text-transform:uppercase;'>Starting Equipment <span style='font-weight:400;text-transform:none;'>(blank = auto-pick; when editing, blank clears the slot)</span></div>
     <div class='form-row'>
       <label>Main Hand<input id='pc_mainhand' autocomplete='off' placeholder='Weapon or tool'/></label>
       <label>Off Hand<input id='pc_offhand' autocomplete='off' placeholder='Shield or secondary'/></label>
@@ -421,6 +421,15 @@ function fillForm(pc) {
       input.value = '';
     }
   });
+  // When editing a saved character, pre-fill equipment fields from the live
+  // Equipment map so re-saving is an explicit edit, not a reset to starters.
+  if (pc && pc.Equipment) {
+    eqFields.forEach(slot => {
+      const input = document.getElementById(fieldMap[slot]);
+      const item = pc.Equipment[slot];
+      if (input && item && item.Name) input.value = item.Name;
+    });
+  }
 }
 
 function collectForm() {
@@ -837,14 +846,8 @@ loadCharacter();
                                        }
 
                                        PlayerCharacter model;
-                                       if (_coordinator.TryGetCharacter(code, name, out var existing))
-                                       {
-                                           model = existing;
-                                       }
-                                       else
-                                       {
-                                           model = new PlayerCharacter();
-                                       }
+                                       var isNew = !_coordinator.TryGetCharacter(code, name, out var existing);
+                                       model = isNew ? new PlayerCharacter() : existing;
 
                                        string StrField(string key)
                                        {
@@ -864,29 +867,66 @@ loadCharacter();
                                        model.WIS = pc.TryGetProperty("WIS", out var wis) ? wis.GetInt32() : 0;
                                        model.CHA = pc.TryGetProperty("CHA", out var cha) ? cha.GetInt32() : 0;
 
-                                       // Build starter equipment from class + current genre,
-                                       // then apply any manual overrides the player provided.
-                                       var starters = EquipmentService.BuildStarterEquipment(
-                                           model.Class, GenreManager.Current.Genre);
-
-                                       string EqField(string key)
+                                       var formSlots = new (EquipmentSlot Slot, string Key)[]
                                        {
-                                           if (!pc.TryGetProperty(key, out var v)) return "";
-                                           var s = (v.GetString() ?? "").Trim();
-                                           return s.Length > 64 ? s[..64] : s;
+                                           (EquipmentSlot.MainHand, "MainHand"),
+                                           (EquipmentSlot.OffHand,  "OffHand"),
+                                           (EquipmentSlot.Chest,    "Chest"),
+                                           (EquipmentSlot.Cloak,    "Cloak"),
+                                           (EquipmentSlot.Feet,     "Feet"),
+                                       };
+
+                                       if (isNew)
+                                       {
+                                           // First save: build starter equipment from class + current
+                                           // genre, then apply any manual overrides the player provided.
+                                           var starters = EquipmentService.BuildStarterEquipment(
+                                               model.Class, GenreManager.Current.Genre);
+
+                                           var overrides = new Dictionary<EquipmentSlot, string>();
+                                           foreach (var (slot, key) in formSlots)
+                                               overrides[slot] = StrField(key);
+                                           model.Equipment = EquipmentService.MergeOverrides(starters, overrides);
+                                       }
+                                       else
+                                       {
+                                           // Re-save: never rebuild from starters — that wiped gear
+                                           // earned in play. The HUD pre-fills the form with current
+                                           // item names, so each field is an explicit slot edit:
+                                           // unchanged text keeps the slot, new text swaps the item,
+                                           // cleared text unequips it. Replaced/cleared items return
+                                           // to inventory; if it's full the slot is left untouched.
+                                           foreach (var (slot, key) in formSlots)
+                                           {
+                                               var text = StrField(key);
+                                               model.Equipment.TryGetValue(slot, out var equipped);
+                                               var currentName = equipped?.Name ?? "";
+                                               if (string.Equals(text, currentName, StringComparison.OrdinalIgnoreCase))
+                                                   continue;
+
+                                               if (equipped is not null)
+                                               {
+                                                   var entry = new InventoryEntry(
+                                                       equipped.Name.ToLowerInvariant().Replace(" ", "_"),
+                                                       equipped.Name,
+                                                       1,
+                                                       null,
+                                                       equipped.StatMods);
+                                                   if (!model.Inventory.TryAdd(entry)) continue;
+                                               }
+
+                                               if (string.IsNullOrEmpty(text))
+                                                   model.Equipment.Remove(slot);
+                                               else
+                                                   model.Equipment[slot] = new Item { Name = text, Slot = slot };
+                                           }
                                        }
 
-                                       var overrides = new Dictionary<EquipmentSlot, string>
-                                       {
-                                           [EquipmentSlot.MainHand] = EqField("MainHand"),
-                                           [EquipmentSlot.OffHand]  = EqField("OffHand"),
-                                           [EquipmentSlot.Chest]    = EqField("Chest"),
-                                           [EquipmentSlot.Cloak]    = EqField("Cloak"),
-                                           [EquipmentSlot.Feet]     = EqField("Feet"),
-                                       };
-                                       model.Equipment = EquipmentService.MergeOverrides(starters, overrides);
-
                                        _coordinator.SetCharacter(code, name, model);
+                                       // Persist inventory changes from returned items (no-op for new
+                                       // characters, whose grid is empty until play begins).
+                                       if (!isNew)
+                                           _coordinator.PersistCharacter(name, model);
                                        // Wake the main window's input loop so it can update
                                        // ConnectedPlayers / RemotePlayers immediately — without
                                        // waiting for the player to send their first message.
