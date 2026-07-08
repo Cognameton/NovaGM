@@ -13,11 +13,9 @@ namespace NovaGM.Services
     public sealed class LlamaLocal : IDisposable
     {
         private LLamaWeights? _weights;
-        private LLamaContext? _ctx;
         private ModelParams? _parms;
-        private ChatSession? _chat;
-        private StatelessExecutor? _agentExecutor; // Reused across all CompleteAsync calls
-        public bool IsLoaded => _chat is not null;
+        private StatelessExecutor? _executor; // Shared by AskAsync and CompleteAsync
+        public bool IsLoaded => _executor is not null;
 
         public async Task LoadAsync(string ggufPath, int ctxSize = 2048, int gpuLayers = 0, int? threads = null)
         {
@@ -29,12 +27,13 @@ namespace NovaGM.Services
                 GpuLayerCount = gpuLayers > 0 ? gpuLayers : 0,
             };
             _weights = LLamaWeights.LoadFromFile(_parms);
-            _ctx = _weights.CreateContext(_parms);
-            _chat = new ChatSession(new InteractiveExecutor(_ctx));
 
-            // Pre-create a single StatelessExecutor for CompleteAsync so the ReAct
-            // loop reuses one context instead of allocating a new one per step.
-            _agentExecutor = new StatelessExecutor(_weights, _parms);
+            // Stateless on purpose: the orchestrator re-sends all continuity (facts,
+            // compact world state, rolling context) in every prompt, so persistent
+            // chat history only fills the fixed context window until narration
+            // degrades a few turns in. The controller made this switch earlier;
+            // narrator and memory now execute the same way.
+            _executor = new StatelessExecutor(_weights, _parms);
 
             Console.WriteLine($"[NovaGM] LLAMA loaded: {System.IO.Path.GetFileName(ggufPath)} ctx={ctxSize} gpu={gpuLayers}");
             await Task.CompletedTask;
@@ -44,7 +43,7 @@ namespace NovaGM.Services
         // maxTokens=0 uses Config.NarratorMaxTokens; pass an explicit value for non-narrator roles.
         public async Task<string> AskAsync(string sys, string user, CancellationToken ct, Action<string>? onToken = null, int maxTokens = 0)
         {
-            if (_chat is null) return "";
+            if (_executor is null) return "";
 
             var sb = new StringBuilder();
             var prompt = sys + "\n\nUser:\n" + user + "\nAssistant:\n";
@@ -60,10 +59,7 @@ namespace NovaGM.Services
                 AntiPrompts = new List<string> { "<EOT>" }
             };
 
-            await foreach (var tok in _chat.ChatAsync(
-                new ChatHistory.Message(AuthorRole.User, prompt),
-                infer,
-                ct))
+            await foreach (var tok in _executor.InferAsync(prompt, infer, ct))
             {
                 if (ct.IsCancellationRequested) break;
                 var s = tok;
@@ -93,9 +89,9 @@ namespace NovaGM.Services
             CancellationToken ct,
             Action<string>? onToken = null)
         {
-            if (_agentExecutor is null) return "";
+            if (_executor is null) return "";
 
-            var executor = _agentExecutor;
+            var executor = _executor;
             var infer = new InferenceParams
             {
                 MaxTokens = maxTokens,
@@ -169,11 +165,9 @@ namespace NovaGM.Services
 
         public void Dispose()
         {
-            try { _chat = null; } catch { }
-            try { _agentExecutor = null; } catch { }
-            try { _ctx?.Dispose(); } catch { }
+            _executor = null;
             try { _weights?.Dispose(); } catch { }
-            _ctx = null; _weights = null; _parms = null;
+            _weights = null; _parms = null;
         }
     }
 }
