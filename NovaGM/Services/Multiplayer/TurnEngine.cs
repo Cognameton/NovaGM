@@ -56,6 +56,11 @@ namespace NovaGM.Services.Multiplayer
         private int  _roundNumber     = 0;
         private bool _gmTurnInProgress = false;
 
+        // True while every active player is incapacitated. Auto-passing in that
+        // state would loop forever (pass → advance → pass…), firing a GM/LLM turn
+        // every "round". The cycle waits here until a revive or a new player.
+        private bool _turnCyclePaused = false;
+
         public string? CurrentPlayerId =>
             (_activePlayers.Count > 0 && _currentIndex < _activePlayers.Count)
             ? _activePlayers[_currentIndex]
@@ -108,6 +113,7 @@ namespace NovaGM.Services.Multiplayer
         {
             if (string.IsNullOrWhiteSpace(playerId)) return false;
             var key = Normalize(playerId);
+            bool resume;
             _lock.Wait();
             try
             {
@@ -115,9 +121,14 @@ namespace NovaGM.Services.Multiplayer
                 if (_activePlayers.Count >= MaxActivePlayers) return false;
                 _activePlayers.Add(key);
                 PersistTurnState();
-                return true;
+                resume = _turnCyclePaused;
+                _turnCyclePaused = false;
             }
             finally { _lock.Release(); }
+
+            // A fresh player can unblock an all-incapacitated stall.
+            if (resume) BeginCurrentPlayerTurn();
+            return true;
         }
 
         /// <summary>Remove a player from the active roster.</summary>
@@ -155,13 +166,18 @@ namespace NovaGM.Services.Multiplayer
         /// <summary>Revive a player from incapacitation.</summary>
         public void Revive(string playerId)
         {
+            bool resume;
             _lock.Wait();
             try
             {
                 _incapacitated.Remove(Normalize(playerId));
                 PersistTurnState();
+                resume = _turnCyclePaused;
+                _turnCyclePaused = false;
             }
             finally { _lock.Release(); }
+
+            if (resume) BeginCurrentPlayerTurn();
         }
 
         // ── Turn flow ─────────────────────────────────────────────────────────
@@ -293,6 +309,7 @@ namespace NovaGM.Services.Multiplayer
         {
             string? current = null;
             bool isIncapacitated = false;
+            bool allIncapacitated = false;
 
             _lock.Wait();
             try
@@ -301,8 +318,19 @@ namespace NovaGM.Services.Multiplayer
                 current = CurrentPlayerId;
                 if (current is null) return;
                 isIncapacitated = _incapacitated.Contains(current);
+                if (isIncapacitated)
+                {
+                    allIncapacitated = _activePlayers.All(p => _incapacitated.Contains(p));
+                    _turnCyclePaused = allIncapacitated;
+                }
             }
             finally { _lock.Release(); }
+
+            if (allIncapacitated)
+            {
+                Console.WriteLine("[TurnEngine] All players incapacitated — pausing the turn cycle until a revive or a new player.");
+                return;
+            }
 
             if (isIncapacitated)
             {
