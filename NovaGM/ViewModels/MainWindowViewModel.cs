@@ -204,7 +204,16 @@ namespace NovaGM.ViewModels
             Compendium.Add(new CompendiumEntry { Category = "Class",  Name = "Wizard",     Description = "Arcane scholar." });
             Compendium.Add(new CompendiumEntry { Category = "Weapon", Name = "Shortsword", Description = "Light melee weapon." });
 
-            AddMessage("GM", "Welcome to NovaGM. Type an action to begin.");
+            // Make session resumption explicit. A stale mid-game world silently
+            // resuming (old location + scene with a fresh default genre) is how the
+            // narrator got stuck retelling an obsolete story after every launch.
+            var priorState = _agent.StateStore.Load();
+            if (!string.IsNullOrWhiteSpace(priorState.Location))
+                AddMessage("System",
+                    $"Previous session found at '{priorState.Location}'. Type an action to continue it, " +
+                    "or use Game → New Game (or pick a genre) to start fresh.");
+            else
+                AddMessage("GM", "Welcome to NovaGM. Type an action to begin.");
 
             var broadcaster  = LocalBroadcaster.Instance;
             var coordinator  = GameCoordinator.Instance;
@@ -401,8 +410,15 @@ namespace NovaGM.ViewModels
                     
                     if (result.HasValue)
                     {
+                        // A genre choice declares a new story. Wipe world state (location,
+                        // scene, facts) and the controller's rolling context — otherwise a
+                        // stale persisted scene resumes silently and the narrator keeps
+                        // telling the old story no matter which genre was picked.
+                        // (Connected players are kept; they get the genre_changed event.)
+                        _agent.ResetForNewGame();
+
                         var genreName = GenreManager.GetGenreDisplayName(result.Value);
-                        Messages.Add(new Message("GM", $"Genre set to {genreName}. The available races, classes, and equipment have been updated accordingly."));
+                        Messages.Add(new Message("GM", $"Genre set to {genreName}. The available races, classes, and equipment have been updated accordingly. The world has been reset for a fresh {genreName} story."));
 
                         // Update compendium with new genre content
                         UpdateCompendiumForGenre();
